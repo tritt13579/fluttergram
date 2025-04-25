@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fluttergram/screens/create_post/create_post.dart';
@@ -11,7 +12,11 @@ import 'controllers/bottom_nav_controller.dart';
 import 'package:stylish_bottom_bar/stylish_bottom_bar.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-void main() {
+import 'firebase_options.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
 }
 
