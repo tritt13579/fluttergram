@@ -170,6 +170,14 @@ class MessagesScreen extends StatelessWidget {
                               title: Text(user['name']!),
                               subtitle: Text(user['username']!),
                               trailing: Icon(Icons.camera_alt_outlined, color: Colors.white54),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ChatScreen(user: user),
+                                  ),
+                                );
+                              },
                             );
                           },
                         ),
@@ -206,6 +214,14 @@ class MessagesScreen extends StatelessWidget {
                               ),
                               title: Text(account['name']!),
                               subtitle: Text(account['username']!),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ChatScreen(user: account),
+                                  ),
+                                );
+                              },
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [

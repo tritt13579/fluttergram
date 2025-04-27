@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'ChatScreen.dart';
 import 'new_group_screen.dart';
 
 class NewMessageScreen extends StatelessWidget {
@@ -54,7 +55,17 @@ class NewMessageScreen extends StatelessWidget {
                     title: Text('Tên người dùng $index'),
                     subtitle: Text('username$index'),
                     onTap: () {
-                      // TODO: Khi bấm vào 1 user
+                      final user = {
+                        'avatar': 'https://i.pravatar.cc/150?img=$index',
+                        'name': 'Tên người dùng $index',
+                        'username': 'username$index',
+                      };
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ChatScreen(user: user),
+                        ),
+                      );
                     },
                   );
                 },
