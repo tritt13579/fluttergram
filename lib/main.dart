@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttergram/screens/auth/login_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fluttergram/screens/create_post/create_post.dart';
 import 'package:fluttergram/screens/home/home_screen.dart';
@@ -8,6 +9,7 @@ import 'package:fluttergram/screens/notifications/notifications_screen.dart';
 import 'package:fluttergram/screens/profile/profile_screen.dart';
 import 'package:fluttergram/screens/search/search_screen.dart';
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'controllers/bottom_nav_controller.dart';
 import 'package:stylish_bottom_bar/stylish_bottom_bar.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -17,6 +19,11 @@ import 'firebase_options.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  await Supabase.initialize(
+    url: 'https://phucklrkdeheqxxrjxxr.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBodWNrbHJrZGVoZXF4eHJqeHhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4NjEyMzgsImV4cCI6MjA2MDQzNzIzOH0.UOhPNnBTlIAZBMLYEy_NQFadNAujK7_iIxdDrOGEg2s',
+  );
   runApp(const MyApp());
 }
 
@@ -68,7 +75,7 @@ class MyApp extends StatelessWidget {
         ),
       ),
       debugShowCheckedModeBanner: false,
-      home: const MainLayout(),
+      home: LoginScreen(),
     );
   }
 }
@@ -105,6 +112,7 @@ class MainLayout extends StatelessWidget {
               Get.to(() => const MessagesScreen());
             },
           ),
+
         ],
       ),
       body: AnimatedSwitcher(
