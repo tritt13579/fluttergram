@@ -1,106 +1,66 @@
 import 'package:flutter/material.dart';
+import 'package:fluttergram/screens/stories/stories_screen.dart';
 
-class StoriesScreen extends StatelessWidget {
-  final String username;
-  final String avatarUrl;
-  final String imageUrl;
-  final String postedTime;
-
-  const StoriesScreen({
-    super.key,
-    required this.username,
-    required this.avatarUrl,
-    required this.imageUrl,
-    this.postedTime = '8 hours ago',
-  });
+class SearchScreen extends StatefulWidget {
+  const SearchScreen({super.key});
 
   @override
+  State<SearchScreen> createState() => _SearchScreenState();
+}
+
+class _SearchScreenState extends State<SearchScreen> {
+  @override
   Widget build(BuildContext context) {
+    final List<String> imageUrls = List.generate(
+      30,
+          (index) => 'https://picsum.photos/seed/image$index/200/200',
+    );
     return Scaffold(
-      backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        titleSpacing: 0,
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundImage: NetworkImage(avatarUrl),
+        title: TextField(
+          keyboardType: TextInputType.text,
+          decoration: InputDecoration(
+            hintText: 'Search',
+            prefixIcon: Icon(Icons.search),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(13),
+              borderSide: BorderSide.none,
             ),
-            SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(username,
-                    style: TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.bold)),
-                Text(postedTime,
-                    style: TextStyle(color: Colors.grey, fontSize: 12)),
-              ],
-            ),
-            Spacer(),
-            Icon(Icons.pause, color: Colors.white),
-            SizedBox(width: 10),
-            Icon(Icons.more_horiz, color: Colors.white),
-          ],
+            filled: true,
+            fillColor: Colors.grey,
+            contentPadding: EdgeInsets.zero,
+          ),
         ),
+        backgroundColor: Colors.black,
+        elevation: 1,
       ),
-      body: Stack(
-        children: [
-          // Story image
-          // Positioned.fill(
-          //   child: Image.network(
-          //     imageUrl,
-          //     fit: BoxFit.cover,
-          //   ),
-          // ),
-
-          // Action buttons
-          Positioned(
-            right: 16,
-            top: MediaQuery.of(context).size.height / 2 - 40,
-            child: Column(
-              children: [
-                Icon(Icons.favorite_border, color: Colors.white, size: 30),
-                SizedBox(height: 20),
-                Icon(Icons.send, color: Colors.white, size: 28),
-              ],
-            ),
+      body: Padding(
+        padding: const EdgeInsets.all(4.0),
+        child: GridView.builder(
+          itemCount: imageUrls.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 4,
+            mainAxisSpacing: 4,
           ),
-
-          // Comment box
-          Positioned(
-            bottom: 20,
-            left: 16,
-            right: 16,
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      style: TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        hintText: 'Comment',
-                        hintStyle: TextStyle(color: Colors.white54),
-                        border: InputBorder.none,
-                      ),
-                    ),
-                  ),
-                  Icon(Icons.favorite, color: Colors.white, size: 20),
-                  SizedBox(width: 8),
-                  Icon(Icons.emoji_emotions_outlined,
-                      color: Colors.white, size: 20),
-                ],
-              ),
-            ),
-          ),
-        ],
+          itemBuilder: (context, index) {
+            return Image.network(
+              imageUrls[index],
+              fit: BoxFit.cover,
+            );
+          },
+        ),
+        // child: Center(
+        //   child: ElevatedButton(
+        //     onPressed: () {
+        //       Navigator.push(
+        //         context,
+        //         MaterialPageRoute(builder: (context) => StoriesScreen()),
+        //       );
+        //     },
+        //     child: Text("Page Story"),
+        //   ),
+        // ),
       ),
     );
   }
