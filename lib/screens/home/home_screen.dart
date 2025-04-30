@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fluttergram/screens/search/search_screen.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -148,26 +149,40 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           separatorBuilder: (_, __) => const SizedBox(width: 12),
           itemBuilder: (context, index) {
             final story = stories[index];
-            return Column(
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.pinkAccent, width: 2),
-                    shape: BoxShape.circle,
+            return GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => StoriesScreen(
+                      username: story['username']!,
+                      avatarUrl: story['avatar']!,
+                      imageUrl: 'https://picsum.photos/800/1400?random=$index',
+                    ),
                   ),
-                  padding: const EdgeInsets.all(2),
-                  child: CircleAvatar(
-                    radius: 30,
-                    backgroundImage: NetworkImage(story['avatar']!),
+                );
+              },
+              child: Column(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.pinkAccent, width: 2),
+                      shape: BoxShape.circle,
+                    ),
+                    padding: const EdgeInsets.all(2),
+                    child: CircleAvatar(
+                      radius: 30,
+                      backgroundImage: NetworkImage(story['avatar']!),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  story['username']!,
-                  style: const TextStyle(fontSize: 12),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    story['username']!,
+                    style: const TextStyle(fontSize: 12),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             );
           },
         ),
