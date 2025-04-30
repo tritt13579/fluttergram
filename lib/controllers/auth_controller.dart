@@ -3,7 +3,6 @@ import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -13,6 +12,7 @@ import '../screens/auth/login_screen.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final supabase = Supabase.instance.client;
 
   Future<void> signup({
@@ -25,55 +25,36 @@ class AuthService {
     required BuildContext context,
   }) async {
     try {
-      // Đăng ký tài khoản Firebase
+      // Create Firebase account
       final credential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      final uid = credential.user!.uid;
+      final user = credential.user;
+      if (user == null) throw Exception('User creation failed.');
+      final uid = user.uid;
 
-      // Tạo ID
+      // Generate custom user ID
       final userId = await _generateUniqueTextId();
 
+      // Upload avatar to Supabase
+      final avatarUrl = await _uploadAvatarToSupabase(avatarFile, userId);
 
-      //loi cho nay
-      String? avatarUrl;
-
-      if (avatarFile != null && await avatarFile.exists()) {
-        try {
-          final filePath = 'avatars/$userId/$userId.jpg';
-
-          final uploadResponse = await supabase.storage
-              .from('media')
-              .upload(
-            filePath,
-            avatarFile,
-            fileOptions: const FileOptions(upsert: true),
-          );
-
-          if (uploadResponse != null && uploadResponse.isNotEmpty) {
-            avatarUrl = supabase.storage
-                .from('media')
-                .getPublicUrl(filePath);
-          } else {
-            debugPrint('Upload response empty — possibly failed silently.');
-          }
-        } catch (e, stackTrace) {
-          debugPrint('Upload avatar failed: $e');
-          debugPrintStack(stackTrace: stackTrace);
-        }
-      }
-
-      final response = await supabase.from('users').insert({
+      // Prepare user data
+      final userData = {
         'id': userId,
+        'uid': uid,
         'email': email,
         'username': username,
         'fullname': fullname,
         'bio': bio,
-        'avatar_url': avatarUrl ?? 'https://phucklrkdeheqxxrjxxr.supabase.co/storage/v1/object/public/avatars/media/avatars/defaults/defaults.jpg',
-        'created_at': DateTime.now().toIso8601String(),
-      });
+        'avatar_url': avatarUrl,
+        'created_at': DateTime.now(),
+      };
+
+      // Save to Firestore
+      await _firestore.collection('users').doc(uid).set(userData);
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -88,23 +69,49 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       String message;
       if (e.code == 'weak-password') {
-        message = 'The password provided is too weak.';
+        message = 'The password is too weak.';
       } else if (e.code == 'email-already-in-use') {
-        message = 'An account already exists with that email.';
+        message = 'That email is already in use.';
       } else {
-        message = 'Registration failed. Please try again.';
+        message = 'Registration failed: ${e.message}';
       }
       _showError(context, message);
     } catch (e, stackTrace) {
-      debugPrint('Unexpected error: $e');
+      debugPrint('Signup error: $e');
       debugPrintStack(stackTrace: stackTrace);
       _showError(context, 'An unexpected error occurred: $e');
     }
   }
 
+  Future<String> _uploadAvatarToSupabase(File? avatarFile, String userId) async {
+    const defaultAvatar =
+        'https://phucklrkdeheqxxrjxxr.supabase.co/storage/v1/object/public/media/avatars/defaults/default.jpg';
+
+    if (avatarFile == null || !await avatarFile.exists()) return defaultAvatar;
+
+    try {
+      final filePath = 'avatars/$userId/$userId.jpg';
+      final response = await supabase.storage
+          .from('media')
+          .upload(filePath, avatarFile, fileOptions: const FileOptions(upsert: true));
+
+      if (response.isNotEmpty) {
+        return supabase.storage.from('media').getPublicUrl(filePath);
+      } else {
+        debugPrint('Upload returned empty response.');
+        return defaultAvatar;
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Avatar upload failed: $e');
+      debugPrintStack(stackTrace: stackTrace);
+      return defaultAvatar;
+    }
+  }
+
+
   Future<String> _generateUniqueTextId() async {
-    final List<dynamic> data = await supabase.from('users').select('id');
-    final existingIds = data.map((e) => e['id'] as String).toSet();
+    final snapshot = await _firestore.collection('users').get();
+    final existingIds = snapshot.docs.map((doc) => doc['id'] as String).toSet();
 
     String newId;
     do {
