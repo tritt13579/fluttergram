@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:fluttergram/screens/search/search_screen.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
+import '../stories/stories_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
