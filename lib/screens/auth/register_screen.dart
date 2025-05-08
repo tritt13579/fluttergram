@@ -49,7 +49,29 @@ class _SignupState extends State<RegisterScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       resizeToAvoidBottomInset: true,
-      bottomNavigationBar: _signin(context),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: RichText(
+          textAlign: TextAlign.center,
+          text: TextSpan(
+            children: [
+              const TextSpan(
+                text: "Already have an account? ",
+                style: TextStyle(color: Colors.grey, fontSize: 16),
+              ),
+              TextSpan(
+                text: "Log In",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+                recognizer: TapGestureRecognizer()..onTap = () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        ),
+      ),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -98,112 +120,192 @@ class _SignupState extends State<RegisterScreen> {
                 ),
               ),
               const SizedBox(height: 40),
-              _inputField("Email Address", _emailController, false),
+
+              // Email
+              Text(
+                "Email Address",
+                style: GoogleFonts.raleway(
+                  textStyle: const TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _emailController,
+                obscureText: false,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.white10,
+                  hintText: 'Enter your Email Address',
+                  hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
-              _inputField("Username", _usernameController, false),
+
+              // Username
+              Text(
+                "Username",
+                style: GoogleFonts.raleway(
+                  textStyle: const TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _usernameController,
+                obscureText: false,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.white10,
+                  hintText: 'Enter your Username',
+                  hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
-              _inputField("Full Name", _fullnameController, false),
+
+              // Full Name
+              Text(
+                "Full Name",
+                style: GoogleFonts.raleway(
+                  textStyle: const TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _fullnameController,
+                obscureText: false,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.white10,
+                  hintText: 'Enter your Full Name',
+                  hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
-              _inputField("Bio (option)", _bioController, false),
+
+              // Bio
+              Text(
+                "Bio (option)",
+                style: GoogleFonts.raleway(
+                  textStyle: const TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _bioController,
+                obscureText: false,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.white10,
+                  hintText: 'Enter your Bio (option)',
+                  hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
-              _inputField("Password", _passwordController, true),
+
+              // Password
+              Text(
+                "Password",
+                style: GoogleFonts.raleway(
+                  textStyle: const TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _passwordController,
+                obscureText: true,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.white10,
+                  hintText: 'Enter your Password',
+                  hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
-              _inputField("Confirm Password", _confirmPasswordController, true),
+
+              // Confirm Password
+              Text(
+                "Confirm Password",
+                style: GoogleFonts.raleway(
+                  textStyle: const TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _confirmPasswordController,
+                obscureText: true,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.white10,
+                  hintText: 'Enter your Confirm Password',
+                  hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
               const SizedBox(height: 40),
-              _signup(context),
+
+              // Sign Up Button
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xff0D6EFD),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  minimumSize: const Size(double.infinity, 60),
+                  elevation: 0,
+                ),
+                onPressed: () async {
+                  if (_passwordController.text != _confirmPasswordController.text) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Passwords do not match"),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
+
+                  await AuthService().signup(
+                    email: _emailController.text.trim(),
+                    password: _passwordController.text.trim(),
+                    username: _usernameController.text.trim(),
+                    fullname: _fullnameController.text.trim(),
+                    bio: _bioController.text.trim(),
+                    avatarFile: _avatarFile,
+                    context: context,
+                  );
+                },
+                child: const Text("Sign Up", style: TextStyle(color: Colors.white)),
+              ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _inputField(String label, TextEditingController controller, bool obscure) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.raleway(
-            textStyle: const TextStyle(color: Colors.white, fontSize: 16),
-          ),
-        ),
-        const SizedBox(height: 10),
-        TextField(
-          controller: controller,
-          obscureText: obscure,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: Colors.white10,
-            hintText: 'Enter your $label',
-            hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide.none,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _signup(BuildContext context) {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xff0D6EFD),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
-        minimumSize: const Size(double.infinity, 60),
-        elevation: 0,
-      ),
-      onPressed: () async {
-        if (_passwordController.text != _confirmPasswordController.text) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Passwords do not match"),
-              backgroundColor: Colors.red,
-            ),
-          );
-          return;
-        }
-
-        await AuthService().signup(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-          username: _usernameController.text.trim(),
-          fullname: _fullnameController.text.trim(),
-          bio: _bioController.text.trim(),
-          avatarFile: _avatarFile,
-          context: context,
-        );
-      },
-      child: const Text("Sign Up", style: TextStyle(color: Colors.white)),
-    );
-  }
-
-  Widget _signin(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: RichText(
-        textAlign: TextAlign.center,
-        text: TextSpan(
-          children: [
-            const TextSpan(
-              text: "Already have an account? ",
-              style: TextStyle(color: Colors.grey, fontSize: 16),
-            ),
-            TextSpan(
-              text: "Log In",
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-              recognizer: TapGestureRecognizer()..onTap = () => Navigator.pop(context),
-            ),
-          ],
         ),
       ),
     );

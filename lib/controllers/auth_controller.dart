@@ -1,11 +1,9 @@
 import 'dart:io';
-import 'dart:math';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../main.dart';
 import '../screens/auth/login_screen.dart';
@@ -13,7 +11,7 @@ import '../screens/auth/login_screen.dart';
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final supabase = Supabase.instance.client;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   Future<void> signup({
     required String email,
@@ -35,15 +33,11 @@ class AuthService {
       if (user == null) throw Exception('User creation failed.');
       final uid = user.uid;
 
-      // Generate custom user ID
-      final userId = await _generateUniqueTextId();
-
-      // Upload avatar to Supabase
-      final avatarUrl = await _uploadAvatarToSupabase(avatarFile, userId);
+      // Upload avatar to Firebase Storage
+      final avatarUrl = await _uploadAvatarToFirebaseStorage(avatarFile, uid);
 
       // Prepare user data
       final userData = {
-        'id': userId,
         'uid': uid,
         'email': email,
         'username': username,
@@ -83,43 +77,23 @@ class AuthService {
     }
   }
 
-  Future<String> _uploadAvatarToSupabase(File? avatarFile, String userId) async {
-    const defaultAvatar =
-        'https://phucklrkdeheqxxrjxxr.supabase.co/storage/v1/object/public/media/avatars/defaults/default.jpg';
+  Future<String> _uploadAvatarToFirebaseStorage(File? avatarFile, String uid) async {
+    const defaultAvatarUrl =
+        'https://firebasestorage.googleapis.com/v0/b/fluttergram-5077d.appspot.com/o/avatars%2Fdefaul%2Fdefaults.jpg?alt=media';
 
-    if (avatarFile == null || !await avatarFile.exists()) return defaultAvatar;
+    if (avatarFile == null || !await avatarFile.exists()) return defaultAvatarUrl;
 
     try {
-      final filePath = 'avatars/$userId/$userId.jpg';
-      final response = await supabase.storage
-          .from('media')
-          .upload(filePath, avatarFile, fileOptions: const FileOptions(upsert: true));
-
-      if (response.isNotEmpty) {
-        return supabase.storage.from('media').getPublicUrl(filePath);
-      } else {
-        debugPrint('Upload returned empty response.');
-        return defaultAvatar;
-      }
+      final ref = _storage.ref().child('avatars/$uid/img_$uid');
+      await ref.putFile(avatarFile);
+      return await ref.getDownloadURL();
     } catch (e, stackTrace) {
       debugPrint('Avatar upload failed: $e');
       debugPrintStack(stackTrace: stackTrace);
-      return defaultAvatar;
+      return defaultAvatarUrl;
     }
   }
 
-
-  Future<String> _generateUniqueTextId() async {
-    final snapshot = await _firestore.collection('users').get();
-    final existingIds = snapshot.docs.map((doc) => doc['id'] as String).toSet();
-
-    String newId;
-    do {
-      newId = (Random().nextInt(900000) + 100000).toString();
-    } while (existingIds.contains(newId));
-
-    return newId;
-  }
 
   Future<void> signin({
     required String email,
@@ -131,7 +105,6 @@ class AuthService {
         email: email,
         password: password,
       );
-
       Get.offAll(() => const MainLayout());
     } on FirebaseAuthException catch (e) {
       String message = '';
