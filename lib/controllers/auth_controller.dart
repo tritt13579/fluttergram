@@ -9,6 +9,7 @@ import '../main.dart';
 import '../screens/auth/login_screen.dart';
 
 class AuthService {
+
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;

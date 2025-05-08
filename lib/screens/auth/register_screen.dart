@@ -77,6 +77,7 @@ class _SignupState extends State<RegisterScreen> {
         elevation: 0,
         toolbarHeight: 50,
       ),
+
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
