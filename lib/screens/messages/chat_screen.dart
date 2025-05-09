@@ -46,7 +46,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
 
     FirebaseService().sendMessage(conversationId, message);
-
     final controller = Get.find<MessagesController>();
     await controller.fetchUserData();
     _messageController.clear();
@@ -84,6 +83,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 //     _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
                 //   }
                 // });
+
                 return ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.all(8),
@@ -97,6 +97,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           ? CrossAxisAlignment.end
                           : CrossAxisAlignment.start,
                       children: [
+                        // Dòng thời gian tách riêng
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
                           child: Text(
@@ -108,6 +109,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                         ),
 
+                        // Chat bubble
                         Align(
                           alignment: isSender
                               ? Alignment.centerRight

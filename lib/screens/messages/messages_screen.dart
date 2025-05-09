@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/messages_controller.dart';
@@ -20,6 +21,7 @@ class MessagesScreen extends StatelessWidget {
               IconButton(
                 icon: Icon(Icons.edit_square),
                 onPressed: () {
+                  // Edit user profile action
                 },
               ),
             ],
@@ -82,6 +84,7 @@ class MessagesScreen extends StatelessWidget {
                         trailing: IconButton(
                           icon: Icon(Icons.delete),
                           onPressed: () async {
+                            // Xóa cuộc trò chuyện khi người dùng chọn
                             await controller.deleteConversationAndMessages(user.uid);
                           },
                         ),
