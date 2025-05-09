@@ -8,8 +8,8 @@ import 'package:get/get.dart';
 import '../main.dart';
 import '../screens/auth/login_screen.dart';
 
-class AuthService {
 
+class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
@@ -85,7 +85,7 @@ class AuthService {
     if (avatarFile == null || !await avatarFile.exists()) return defaultAvatarUrl;
 
     try {
-      final ref = _storage.ref().child('avatars/$uid/img_$uid');
+      final ref = _storage.ref().child('avatars/$uid/img_$uid.jpg');
       await ref.putFile(avatarFile);
       return await ref.getDownloadURL();
     } catch (e, stackTrace) {

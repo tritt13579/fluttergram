@@ -126,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 TextSpan(
                   children: [
                     TextSpan(
-                      text: post['username']! + ' ',
+                      text: '${post['username']!} ',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     TextSpan(text: post['caption']),

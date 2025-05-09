@@ -13,14 +13,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'controllers/bottom_nav_controller.dart';
 import 'package:stylish_bottom_bar/stylish_bottom_bar.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-
 import 'firebase_options.dart';
 
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
   await Supabase.initialize(
     url: 'https://phucklrkdeheqxxrjxxr.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBodWNrbHJrZGVoZXF4eHJqeHhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4NjEyMzgsImV4cCI6MjA2MDQzNzIzOH0.UOhPNnBTlIAZBMLYEy_NQFadNAujK7_iIxdDrOGEg2s',
@@ -110,7 +108,7 @@ class MainLayout extends StatelessWidget {
           IconButton(
             icon: const FaIcon(FontAwesomeIcons.facebookMessenger),
             onPressed: () {
-              Get.to(() => const MessagesScreen());
+              Get.to(() =>  MessagesScreen());
             },
           ),
 
