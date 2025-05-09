@@ -1,10 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
 import '../../controllers/auth_controller.dart';
 import 'edit_profile_screen.dart';
-
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -12,6 +10,7 @@ class ProfileScreen extends StatefulWidget {
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
+
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -156,11 +155,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         side: const BorderSide(color: Colors.grey),
                         foregroundColor: Colors.white,
                       ),
-                      onPressed: () {
-                        Navigator.push(
+                      onPressed: () async {
+                        bool? result = await Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => EditProfileScreen()),
+                          MaterialPageRoute(
+                            builder: (context) => const EditProfileScreen(),
+                          ),
                         );
+
+                        if (result == true) {
+                          _loadUserProfile();
+                        }
                       },
                       child: const Text('Edit Profile'),
                     ),
@@ -178,33 +183,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: const Text('Log Out'),
                     ),
                   ),
-
                 ],
               ),
             ),
-
-            const SizedBox(height: 16),
-
-            // // Lưới bài đăng (demo)
-            // Padding(
-            //   padding: const EdgeInsets.only(top: 16),
-            //   child: GridView.builder(
-            //     shrinkWrap: true,
-            //     physics: const NeverScrollableScrollPhysics(),
-            //     itemCount: 15,
-            //     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            //       crossAxisCount: 3,
-            //       crossAxisSpacing: 2,
-            //       mainAxisSpacing: 2,
-            //     ),
-            //     itemBuilder: (context, index) {
-            //       return Image.asset(
-            //         'assets/sample_post.jpg',
-            //         fit: BoxFit.cover,
-            //       );
-            //     },
-            //   ),
-            // ),
           ],
         ),
       ),
@@ -215,7 +196,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 class _StatItem extends StatelessWidget {
   final String value;
   final String label;
+
   const _StatItem({required this.value, required this.label});
+
   @override
   Widget build(BuildContext context) {
     return Column(

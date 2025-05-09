@@ -95,6 +95,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   backgroundColor: Colors.white,
                   foregroundColor: Colors.black,
                 ),
+
                 onPressed: () {
                   controller.saveProfile(context);
                 },

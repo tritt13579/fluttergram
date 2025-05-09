@@ -293,6 +293,7 @@ class _SignupState extends State<RegisterScreen> {
                     return;
                   }
 
+
                   await AuthService().signup(
                     email: _emailController.text.trim(),
                     password: _passwordController.text.trim(),
