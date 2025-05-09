@@ -18,7 +18,6 @@ class MessagesController extends GetxController {
     fetchUserData();
   }
 
-
   Future<void> fetchUserData() async {
     currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
@@ -34,12 +33,9 @@ class MessagesController extends GetxController {
       final userData = userSnapshot.data();
       currentUsername = userData!['username'] ?? 'Unknown';
     }
-
-    // Nghe users trước
     _firebaseService.getUsersStream().listen((users) async {
       final otherUsers = users.where((u) => u.uid != currentUserId).toList();
 
-      // Lấy toàn bộ ID của các kênh đã tồn tại với currentUser
       final conversationSnapshots = await FirebaseFirestore.instance
           .collection('conversations')
           .where('members', arrayContains: currentUserId)
@@ -52,11 +48,9 @@ class MessagesController extends GetxController {
         existingUserIds.add(otherUserId);
       }
 
-      // Cập nhật recentMessages (nếu có messages thật sự, giữ nguyên luồng getRecentConversations)
       _firebaseService.getRecentConversations(currentUserId).listen((recentUsers) {
         recentMessages = recentUsers;
 
-        // Lọc ra gợi ý: những người KHÔNG nằm trong danh sách conversation (kể cả chưa nhắn gì)
         recommended = otherUsers
             .where((u) => !existingUserIds.contains(u.uid))
             .take(15)
@@ -64,7 +58,6 @@ class MessagesController extends GetxController {
 
         update();
       }, onError: (e) {
-        // Không có đoạn chat nào: vẫn phải lọc theo conversation đã tồn tại
         recommended = otherUsers
             .where((u) => !existingUserIds.contains(u.uid))
             .take(15)
@@ -72,7 +65,6 @@ class MessagesController extends GetxController {
         update();
       });
     });
-
   }
 
   void addToRecentMessages(UserModel user) {
@@ -92,6 +84,6 @@ class MessagesController extends GetxController {
     recentMessages.removeWhere((user) => user.uid == otherUserId);
 
     update();
-    await fetchUserData();// Cập nhật giao diện ngay lập tức
+    await fetchUserData();
   }
 }

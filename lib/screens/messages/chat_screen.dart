@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';  // Import thư viện intl để định dạng thời gian
+import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../ services/firebase_service.dart';
+import '../../controllers/messages_controller.dart';
 import '../../models/message_model.dart';
 import '../../models/user_model.dart';
 
@@ -44,6 +46,9 @@ class _ChatScreenState extends State<ChatScreen> {
     );
 
     FirebaseService().sendMessage(conversationId, message);
+
+    final controller = Get.find<MessagesController>();
+    await controller.fetchUserData();
     _messageController.clear();
   }
 
@@ -51,6 +56,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final format = DateFormat('HH:mm dd/MM/yyyy');  // Định dạng thời gian
     return format.format(timestamp);
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -73,12 +79,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
                 final messages = snapshot.data!;
 
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (_scrollController.hasClients) {
-                    _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-                  }
-                });
-
+                // WidgetsBinding.instance.addPostFrameCallback((_) {
+                //   if (_scrollController.hasClients) {
+                //     _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+                //   }
+                // });
                 return ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.all(8),
@@ -92,7 +97,6 @@ class _ChatScreenState extends State<ChatScreen> {
                           ? CrossAxisAlignment.end
                           : CrossAxisAlignment.start,
                       children: [
-                        // Dòng thời gian tách riêng
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
                           child: Text(
@@ -104,7 +108,6 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                         ),
 
-                        // Chat bubble
                         Align(
                           alignment: isSender
                               ? Alignment.centerRight
