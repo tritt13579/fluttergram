@@ -4,6 +4,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
+import '../models/post_model.dart';
 import 'firebase_service.dart';
 
 class PostService {
@@ -56,24 +57,28 @@ class PostService {
     required String userId,
     required String caption,
     required List<String> mediaUrls,
+    String? ownerUsername,
+    String? ownerPhotoUrl,
     List<String>? hashtags,
   }) async {
     try {
       final List<String> postHashtags = hashtags ?? extractHashtags(caption);
       final postRef = _firebaseService.firestore.collection('posts').doc();
 
-      final postData = {
-        'ownerId': userId,
-        'caption': caption,
-        'hashtags': postHashtags,
-        'mediaUrls': mediaUrls,
-        'createdAt': FieldValue.serverTimestamp(),
-        'likes': [],
-        'likeCount': 0,
-        'commentCount': 0,
-      };
+      final postModel = PostModel(
+        id: postRef.id,
+        ownerId: userId,
+        ownerUsername: ownerUsername,
+        ownerPhotoUrl: ownerPhotoUrl,
+        caption: caption,
+        mediaUrls: mediaUrls,
+        hashtags: postHashtags,
+        likeCount: 0,
+        commentCount: 0,
+        createdAt: DateTime.now(),
+      );
 
-      await postRef.set(postData);
+      await postRef.set(postModel.toMap());
       await _updateHashtagCounts(postHashtags);
 
       return postRef.id;
@@ -105,31 +110,22 @@ class PostService {
     await batch.commit();
   }
 
-  Future<void> addComment({
+  Future<bool> hasUserLikedPost({
     required String postId,
     required String userId,
-    required String content,
   }) async {
     try {
-      final commentId = _uuid.v4();
-      final postRef = _firebaseService.firestore.collection('posts').doc(postId);
+      final likeDoc = await _firebaseService.firestore
+          .collection('posts')
+          .doc(postId)
+          .collection('likes')
+          .doc(userId)
+          .get();
 
-      await postRef
-          .collection('comments')
-          .doc(commentId)
-          .set({
-        'commentId': commentId,
-        'uid': userId,
-        'content': content,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      await postRef.update({
-        'commentCount': FieldValue.increment(1),
-      });
+      return likeDoc.exists;
     } catch (e) {
-      debugPrint('Error adding comment: $e');
-      rethrow;
+      debugPrint('Error checking if user liked post: $e');
+      return false;
     }
   }
 
@@ -139,26 +135,136 @@ class PostService {
   }) async {
     try {
       final postRef = _firebaseService.firestore.collection('posts').doc(postId);
-      final snapshot = await postRef.get();
+      final likeRef = postRef.collection('likes').doc(userId);
 
-      if (!snapshot.exists) throw Exception('Post not found');
+      final likeDoc = await likeRef.get();
+      final bool isLiked = likeDoc.exists;
 
-      final data = snapshot.data() as Map<String, dynamic>;
-      final likes = List<String>.from(data['likes'] ?? []);
+      final batch = _firebaseService.firestore.batch();
 
-      if (likes.contains(userId)) {
-        likes.remove(userId);
+      if (isLiked) {
+        batch.delete(likeRef);
+        batch.update(postRef, {
+          'likeCount': FieldValue.increment(-1),
+        });
       } else {
-        likes.add(userId);
+        batch.set(likeRef, {
+          'userId': userId,
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+        batch.update(postRef, {
+          'likeCount': FieldValue.increment(1),
+        });
       }
 
-      await postRef.update({
-        'likes': likes,
-        'likeCount': likes.length,
-      });
+      await batch.commit();
     } catch (e) {
       debugPrint('Error toggling like: $e');
       rethrow;
+    }
+  }
+
+  Future<List<String>> getLikedUserIds({
+    required String postId,
+    int limit = 20,
+    DocumentSnapshot? lastDocument,
+  }) async {
+    try {
+      Query query = _firebaseService.firestore
+          .collection('posts')
+          .doc(postId)
+          .collection('likes')
+          .orderBy('timestamp', descending: true)
+          .limit(limit);
+
+      if (lastDocument != null) {
+        query = query.startAfterDocument(lastDocument);
+      }
+
+      final snapshot = await query.get();
+
+      return snapshot.docs
+          .map((doc) => doc.id)
+          .toList();
+    } catch (e) {
+      debugPrint('Error getting liked user ids: $e');
+      return [];
+    }
+  }
+
+  Future<List<PostModel>> getFeedPosts({
+    int limit = 10,
+    DocumentSnapshot? lastDocument,
+  }) async {
+    try {
+      Query query = _firebaseService.firestore
+          .collection('posts')
+          .orderBy('createdAt', descending: true)
+          .limit(limit);
+
+      if (lastDocument != null) {
+        query = query.startAfterDocument(lastDocument);
+      }
+
+      final snapshot = await query.get();
+
+      return snapshot.docs
+          .map((doc) => PostModel.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      debugPrint('Error getting feed posts: $e');
+      return [];
+    }
+  }
+
+  Future<List<PostModel>> getUserPosts(String userId) async {
+    try {
+      final snapshot = await _firebaseService.firestore
+          .collection('posts')
+          .where('ownerId', isEqualTo: userId)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      return snapshot.docs
+          .map((doc) => PostModel.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      debugPrint('Error getting user posts: $e');
+      return [];
+    }
+  }
+
+  Future<List<PostModel>> getPostsByHashtag(String hashtag) async {
+    try {
+      final cleanTag = hashtag.startsWith('#') ? hashtag : '#$hashtag';
+      final snapshot = await _firebaseService.firestore
+          .collection('posts')
+          .where('hashtags', arrayContains: cleanTag)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      return snapshot.docs
+          .map((doc) => PostModel.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      debugPrint('Error getting posts by hashtag: $e');
+      return [];
+    }
+  }
+
+  Future<PostModel?> getPostById(String postId) async {
+    try {
+      final snapshot = await _firebaseService.firestore
+          .collection('posts')
+          .doc(postId)
+          .get();
+
+      if (!snapshot.exists) return null;
+
+      return PostModel.fromFirestore(snapshot);
+    } catch (e) {
+      debugPrint('Error getting post by id: $e');
+      return null;
     }
   }
 
@@ -178,5 +284,107 @@ class PostService {
       debugPrint('Error getting popular hashtags: $e');
       return [];
     }
+  }
+
+  Future<void> deletePost(String postId) async {
+    try {
+      final postSnapshot = await _firebaseService.firestore
+          .collection('posts')
+          .doc(postId)
+          .get();
+
+      if (!postSnapshot.exists) return;
+
+      final post = PostModel.fromFirestore(postSnapshot);
+
+      final likesSnapshot = await _firebaseService.firestore
+          .collection('posts')
+          .doc(postId)
+          .collection('likes')
+          .get();
+
+      final batch = _firebaseService.firestore.batch();
+
+      for (var doc in likesSnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+
+      batch.delete(_firebaseService.firestore.collection('posts').doc(postId));
+
+      await batch.commit();
+      await _decrementHashtagCounts(post.hashtags);
+
+      for (var mediaUrl in post.mediaUrls) {
+        try {
+          final ref = _firebaseService.storage.refFromURL(mediaUrl);
+          await ref.delete();
+        } catch (e) {
+          debugPrint('Error deleting media file: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error deleting post: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _decrementHashtagCounts(List<String> hashtags) async {
+    final batch = _firebaseService.firestore.batch();
+
+    for (var tag in hashtags) {
+      final cleanTag = tag.startsWith('#') ? tag.substring(1) : tag;
+      final tagRef = _firebaseService.firestore.collection('hashtags').doc(cleanTag);
+
+      final snapshot = await tagRef.get();
+      if (snapshot.exists) {
+        final currentCount = snapshot.data()?['count'] ?? 0;
+        if (currentCount <= 1) {
+          batch.delete(tagRef);
+        } else {
+          batch.update(tagRef, {
+            'count': FieldValue.increment(-1),
+          });
+        }
+      }
+    }
+
+    await batch.commit();
+  }
+
+  Stream<List<PostModel>> postsFeedStream({int limit = 10}) {
+    return _firebaseService.firestore
+        .collection('posts')
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => PostModel.fromFirestore(doc))
+          .toList();
+    });
+  }
+
+  Stream<PostModel?> postStream(String postId) {
+    return _firebaseService.firestore
+        .collection('posts')
+        .doc(postId)
+        .snapshots()
+        .map((snapshot) {
+      if (!snapshot.exists) return null;
+      return PostModel.fromFirestore(snapshot);
+    });
+  }
+
+  Stream<bool> likeStatusStream({
+    required String postId,
+    required String userId,
+  }) {
+    return _firebaseService.firestore
+        .collection('posts')
+        .doc(postId)
+        .collection('likes')
+        .doc(userId)
+        .snapshots()
+        .map((snapshot) => snapshot.exists);
   }
 }
