@@ -1,20 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:get/get.dart';
+import '../models/post_model.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 class PostItem extends StatelessWidget {
-  final Map<String, String> post;
+  final PostModel post;
   final bool isLiked;
   final bool showHeart;
   final VoidCallback onDoubleTap;
   final VoidCallback onLikeToggle;
+  final VoidCallback onCommentTap;
+  final VoidCallback onProfileTap;
+  final RxBool _isExpanded = false.obs;
 
-  const PostItem({
+  PostItem({
     super.key,
     required this.post,
     required this.isLiked,
     required this.showHeart,
     required this.onDoubleTap,
     required this.onLikeToggle,
+    required this.onCommentTap,
+    required this.onProfileTap,
   });
 
   @override
@@ -22,44 +30,143 @@ class PostItem extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header
-        ListTile(
-          leading: CircleAvatar(
-            backgroundImage: NetworkImage(post['avatar']!),
-          ),
-          title: Text(post['username']!, style: const TextStyle(fontWeight: FontWeight.bold)),
-          trailing: const Icon(Icons.more_vert),
-        ),
-        // Image with double-tap like
-        _buildPostImage(),
-        // Actions
+        _buildHeader(),
+        _buildPostMedia(),
         _buildActionBar(),
-        // Caption
+        _buildViewLikes(),
         _buildCaption(),
+        _buildTimestamp(),
         const SizedBox(height: 16),
       ],
     );
   }
 
-  Widget _buildPostImage() {
+  Widget _buildHeader() {
+    return ListTile(
+      onTap: onProfileTap,
+      leading: CircleAvatar(
+        backgroundImage: post.ownerPhotoUrl != null
+            ? NetworkImage(post.ownerPhotoUrl!)
+            : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
+      ),
+      title: Text(
+        post.ownerUsername ?? 'Người dùng',
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+      trailing: const Icon(Icons.more_vert),
+    );
+  }
+
+  Widget _buildPostMedia() {
+    if (post.mediaUrls.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    if (post.mediaUrls.length == 1) {
+      return _buildSingleMedia(post.mediaUrls.first);
+    } else {
+      return _buildMediaCarousel();
+    }
+  }
+
+  Widget _buildSingleMedia(String mediaUrl) {
     return Stack(
       alignment: Alignment.center,
       children: [
         GestureDetector(
           onDoubleTap: onDoubleTap,
           child: Image.network(
-            post['image']!,
+            mediaUrl,
             width: double.infinity,
             height: 350,
             fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return SizedBox(
+                height: 350,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    value: loadingProgress.expectedTotalBytes != null
+                        ? loadingProgress.cumulativeBytesLoaded /
+                        loadingProgress.expectedTotalBytes!
+                        : null,
+                  ),
+                ),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) => SizedBox(
+              height: 350,
+              child: Center(
+                child: Icon(Icons.error, size: 40, color: Colors.grey[400]),
+              ),
+            ),
           ),
         ),
-        AnimatedOpacity(
-          duration: const Duration(milliseconds: 300),
-          opacity: showHeart ? 1.0 : 0.0,
-          child: const Icon(Icons.favorite, color: Colors.white, size: 100),
+        IgnorePointer(
+          ignoring: true,
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 300),
+            opacity: showHeart ? 1.0 : 0.0,
+            child: const Icon(Icons.favorite, color: Colors.white, size: 100),
+          ),
         ),
       ],
+    );
+  }
+
+  Widget _buildMediaCarousel() {
+    return SizedBox(
+      height: 350,
+      child: PageView.builder(
+        itemCount: post.mediaUrls.length,
+        itemBuilder: (context, index) {
+          return GestureDetector(
+            onDoubleTap: onDoubleTap,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Image.network(
+                  post.mediaUrls[index],
+                  width: double.infinity,
+                  height: 350,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Center(
+                      child: CircularProgressIndicator(
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded /
+                            loadingProgress.expectedTotalBytes!
+                            : null,
+                      ),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) => Center(
+                    child: Icon(Icons.error, size: 40, color: Colors.grey[400]),
+                  ),
+                ),
+                if (showHeart)
+                  const Icon(Icons.favorite, color: Colors.white, size: 100),
+                Positioned(
+                  bottom: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withAlpha((0.7 * 255).toInt()),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${index + 1}/${post.mediaUrls.length}',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -68,16 +175,49 @@ class PostItem extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: onLikeToggle,
-            child: Icon(
-              isLiked ? FontAwesomeIcons.solidHeart : FontAwesomeIcons.heart,
-              size: 24,
-              color: isLiked ? Colors.pinkAccent : null,
-            ),
+          Row(
+            children: [
+              GestureDetector(
+                onTap: onLikeToggle,
+                child: Icon(
+                  isLiked ? FontAwesomeIcons.solidHeart : FontAwesomeIcons.heart,
+                  size: 24,
+                  color: isLiked ? Colors.pinkAccent : null,
+                ),
+              ),
+              if (post.likeCount > 0)
+                Padding(
+                  padding: const EdgeInsets.only(left: 4),
+                  child: Text(
+                    post.likeCount.toString(),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isLiked ? Colors.pinkAccent : Colors.black,
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(width: 16),
-          const Icon(FontAwesomeIcons.comment, size: 24),
+          Row(
+            children: [
+              GestureDetector(
+                onTap: onCommentTap,
+                child: const Icon(FontAwesomeIcons.comment, size: 24),
+              ),
+              if (post.commentCount > 0)
+                Padding(
+                  padding: const EdgeInsets.only(left: 4),
+                  child: Text(
+                    post.commentCount.toString(),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.black,
+                    ),
+                  ),
+                ),
+            ],
+          ),
           const SizedBox(width: 16),
           const Icon(FontAwesomeIcons.paperPlane, size: 24),
           const Spacer(),
@@ -87,19 +227,105 @@ class PostItem extends StatelessWidget {
     );
   }
 
-  Widget _buildCaption() {
+  Widget _buildViewLikes() {
+    if (post.likeCount <= 0) return const SizedBox.shrink();
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Text.rich(
-        TextSpan(
-          children: [
-            TextSpan(
-              text: '${post['username']!} ',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            TextSpan(text: post['caption']),
-          ],
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: GestureDetector(
+        onTap: () {
+          // TODO: Navigate to likes screen
+        },
+        child: Text(
+          'Xem lượt thích',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildCaption() {
+    if (post.caption.isEmpty) return const SizedBox.shrink();
+
+    final captionText = TextSpan(
+      children: [
+        TextSpan(
+          text: '${post.ownerUsername ?? 'Người dùng'} ',
+          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
+        ),
+        TextSpan(
+          text: post.caption,
+          style: const TextStyle( fontSize: 16)
+        ),
+      ],
+    );
+
+    final textPainter = TextPainter(
+      text: captionText,
+      textDirection: TextDirection.ltr,
+      maxLines: 2,
+    );
+
+    textPainter.layout(maxWidth: Get.width - 32);
+
+    final exceedMaxLines = textPainter.didExceedMaxLines;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Obx(() => RichText(
+            maxLines: _isExpanded.value ? null : 2,
+            overflow: _isExpanded.value ? TextOverflow.visible : TextOverflow.ellipsis,
+            text: captionText,
+          )),
+
+          if (exceedMaxLines)
+            Obx(() => _isExpanded.value
+                ? GestureDetector(
+              onTap: () => _isExpanded.value = false,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'Ẩn bớt',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            )
+                : GestureDetector(
+              onTap: () => _isExpanded.value = true,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'Xem thêm',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimestamp() {
+    if (post.createdAt == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Text(
+        timeago.format(post.createdAt!, locale: 'vi'),
+        style: TextStyle(color: Colors.grey[600], fontSize: 12),
       ),
     );
   }

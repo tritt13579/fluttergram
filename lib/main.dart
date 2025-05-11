@@ -9,7 +9,7 @@ import 'package:fluttergram/screens/notifications/notifications_screen.dart';
 import 'package:fluttergram/screens/profile/profile_screen.dart';
 import 'package:fluttergram/screens/search/search_screen.dart';
 import 'package:get/get.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:timeago/timeago.dart' as timeago;
 import 'controllers/bottom_nav_controller.dart';
 import 'package:stylish_bottom_bar/stylish_bottom_bar.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -18,11 +18,8 @@ import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  timeago.setLocaleMessages('vi', timeago.ViMessages());
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await Supabase.initialize(
-    url: 'https://phucklrkdeheqxxrjxxr.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBodWNrbHJrZGVoZXF4eHJqeHhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4NjEyMzgsImV4cCI6MjA2MDQzNzIzOH0.UOhPNnBTlIAZBMLYEy_NQFadNAujK7_iIxdDrOGEg2s',
-  );
   runApp(const MyApp());
 }
 
@@ -33,21 +30,6 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return GetMaterialApp(
       title: 'Flutter Demo',
-      // theme: ThemeData(
-      //   primarySwatch: Colors.pink,
-      //   colorScheme: ColorScheme(
-      //     brightness: Brightness.light,
-      //     primary: Color(0xFFE1306C),
-      //     onPrimary: Colors.white,
-      //     secondary: Color(0xFFFFC107),
-      //     onSecondary: Colors.black,
-      //     error: Colors.red,
-      //     onError: Colors.white,
-      //     surface: Colors.white,
-      //     onSurface: Colors.black,
-      //   ),
-      //   visualDensity: VisualDensity.adaptivePlatformDensity,
-      // ),
       theme: ThemeData(
         brightness: Brightness.dark,
         primarySwatch: Colors.pink,
