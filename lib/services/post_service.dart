@@ -252,6 +252,23 @@ class PostService {
     }
   }
 
+  Future<List<String>> searchHashtags(String keyword) async {
+    try {
+      final snapshot = await _firebaseService.firestore.collection('hashtags').get();
+      final lowerKeyword = keyword.toLowerCase();
+
+      final results = snapshot.docs
+          .map((doc) => doc.id)
+          .where((tag) => tag.toLowerCase().contains(lowerKeyword))
+          .toList();
+
+      return results;
+    } catch (e) {
+      debugPrint('Error searching hashtags: $e');
+      return [];
+    }
+  }
+
   Future<PostModel?> getPostById(String postId) async {
     try {
       final snapshot = await _firebaseService.firestore
