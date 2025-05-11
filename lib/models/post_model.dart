@@ -1,69 +1,91 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class Post {
+class PostModel {
   final String id;
-  final String userId;
+  final String ownerId;
+  final String? ownerUsername;
+  final String? ownerPhotoUrl;
   final String caption;
   final List<String> mediaUrls;
   final List<String> hashtags;
-  final List<String> taggedUsers;
-  final DateTime createdAt;
-  final int likes;
-  final int comments;
+  final int likeCount;
+  final int commentCount;
+  final DateTime? createdAt;
 
-  Post({
+  PostModel({
     required this.id,
-    required this.userId,
+    required this.ownerId,
+    this.ownerUsername,
+    this.ownerPhotoUrl,
     required this.caption,
     required this.mediaUrls,
     required this.hashtags,
-    required this.taggedUsers,
-    required this.createdAt,
-    this.likes = 0,
-    this.comments = 0,
+    required this.likeCount,
+    required this.commentCount,
+    this.createdAt,
   });
 
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'userId': userId,
-      'caption': caption,
-      'mediaUrls': mediaUrls,
-      'hashtags': hashtags,
-      'taggedUsers': taggedUsers,
-      'createdAt': createdAt,
-      'likes': likes,
-      'comments': comments,
-    };
-  }
+  factory PostModel.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
 
-  factory Post.fromMap(Map<String, dynamic> map) {
-    return Post(
-      id: map['id'] ?? '',
-      userId: map['userId'] ?? '',
-      caption: map['caption'] ?? '',
-      mediaUrls: List<String>.from(map['mediaUrls'] ?? []),
-      hashtags: List<String>.from(map['hashtags'] ?? []),
-      taggedUsers: List<String>.from(map['taggedUsers'] ?? []),
-      createdAt: map['createdAt'].toDate(),
-      likes: map['likes'] ?? 0,
-      comments: map['comments'] ?? 0,
-    );
-  }
-
-  factory Post.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-
-    return Post(
+    return PostModel(
       id: doc.id,
-      userId: data['userId'] ?? '',
+      ownerId: data['ownerId'] ?? '',
+      ownerUsername: data['ownerUsername'],
+      ownerPhotoUrl: data['ownerPhotoUrl'],
       caption: data['caption'] ?? '',
       mediaUrls: List<String>.from(data['mediaUrls'] ?? []),
       hashtags: List<String>.from(data['hashtags'] ?? []),
-      taggedUsers: List<String>.from(data['taggedUsers'] ?? []),
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-      likes: data['likes'] ?? 0,
-      comments: data['comments'] ?? 0,
+      likeCount: data['likeCount'] ?? 0,
+      commentCount: data['commentCount'] ?? 0,
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
+    );
+  }
+
+  factory PostModel.fromMap(String id, Map<String, dynamic> data) {
+    return PostModel(
+      id: id,
+      ownerId: data['ownerId'] ?? '',
+      ownerUsername: data['ownerUsername'],
+      ownerPhotoUrl: data['ownerPhotoUrl'],
+      caption: data['caption'] ?? '',
+      mediaUrls: List<String>.from(data['mediaUrls'] ?? []),
+      hashtags: List<String>.from(data['hashtags'] ?? []),
+      likeCount: data['likeCount'] ?? 0,
+      commentCount: data['commentCount'] ?? 0,
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'ownerId': ownerId,
+      'ownerUsername': ownerUsername,
+      'ownerPhotoUrl': ownerPhotoUrl,
+      'caption': caption,
+      'mediaUrls': mediaUrls,
+      'hashtags': hashtags,
+      'likeCount': likeCount,
+      'commentCount': commentCount,
+      'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : null,
+    };
+  }
+
+  PostModel copyWith({
+    int? likeCount,
+    int? commentCount,
+  }) {
+    return PostModel(
+      id: id,
+      ownerId: ownerId,
+      ownerUsername: ownerUsername,
+      ownerPhotoUrl: ownerPhotoUrl,
+      caption: caption,
+      mediaUrls: mediaUrls,
+      hashtags: hashtags,
+      likeCount: likeCount ?? this.likeCount,
+      commentCount: commentCount ?? this.commentCount,
+      createdAt: createdAt,
     );
   }
 }

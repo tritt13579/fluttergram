@@ -163,18 +163,26 @@ class FinalPostController extends GetxController {
   }
 
   Future<void> publishPost() async {
-    if (userId == null) {
-      showError('Bạn cần đăng nhập để đăng bài');
-      return;
-    }
-
     try {
       isLoading.value = true;
+
+      final userDoc = await firebaseService.firestore.collection('users').doc(userId).get();
+
+      if (!userDoc.exists) {
+        showError('Không tìm thấy thông tin người dùng');
+        isLoading.value = false;
+        return;
+      }
+
+      final userData = userDoc.data() as Map<String, dynamic>;
+      final String? username = userData['username'];
+      final String? avatarUrl = userData['avatar_url'];
 
       final String captionText = captionController.text.trim();
       final List<String> hashtags = extractedHashtags
           .map((tag) => '#$tag')
           .toList();
+
       final List<String> mediaUrls = await postService.uploadMediaFiles(mediaList, userId!);
 
       if (captionText.isEmpty && mediaUrls.isEmpty) {
@@ -183,10 +191,13 @@ class FinalPostController extends GetxController {
         return;
       }
 
+
       await postService.createPost(
         userId: userId!,
         caption: captionText,
         mediaUrls: mediaUrls,
+        ownerUsername: username,
+        ownerPhotoUrl: avatarUrl,
         hashtags: hashtags,
       );
 
