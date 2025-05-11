@@ -1,84 +1,96 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+
+import '../../controllers/home_controller.dart';
 import '../../widgets/post_item.dart';
 import '../../widgets/stories_section.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
-  final List<Map<String, String>> posts = [
-    {
-      'username': 'john_doe',
-      'avatar': 'https://i.pravatar.cc/150?img=3',
-      'image': 'https://picsum.photos/500/500?random=1',
-      'caption': 'A beautiful day in the city ☀️',
-    },
-    {
-      'username': 'sarah_123',
-      'avatar': 'https://i.pravatar.cc/150?img=5',
-      'image': 'https://picsum.photos/500/500?random=2',
-      'caption': 'Love this view 💙',
-    },
-    {
-      'username': 'flutter_dev',
-      'avatar': 'https://i.pravatar.cc/150?img=7',
-      'image': 'https://picsum.photos/500/500?random=3',
-      'caption': 'Coding with coffee ☕',
-    },
-  ];
-
-  List<bool> liked = [];
-  List<bool> showHeart = [];
-
-  @override
-  void initState() {
-    super.initState();
-    liked = List<bool>.filled(posts.length, false);
-    showHeart = List<bool>.filled(posts.length, false);
-  }
-
-  void toggleLike(int index) {
-    setState(() {
-      liked[index] = !liked[index];
-    });
-  }
-
-  void showHeartAnimation(int index) {
-    setState(() {
-      liked[index] = true;
-      showHeart[index] = true;
-    });
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (mounted) {
-        setState(() {
-          showHeart[index] = false;
-        });
-      }
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      itemCount: posts.length + 1,
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return const StoriesSection();
+    final controller = Get.put(HomeController());
+
+    return Scaffold(
+      body: RefreshIndicator(
+        onRefresh: controller.loadPosts,
+        child: Obx(() {
+          if (controller.posts.isEmpty && !controller.isLoading.value) {
+            return _buildEmptyView(controller);
+          }
+          return _buildPostsList(controller);
+        }),
+      ),
+    );
+  }
+
+  Widget _buildEmptyView(HomeController controller) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.photo_album, size: 64, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          Text(
+            'Chưa có bài viết nào',
+            style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: controller.loadPosts,
+            child: const Text('Tải lại'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPostsList(HomeController controller) {
+    return NotificationListener<ScrollNotification>(
+      onNotification: (ScrollNotification scrollInfo) {
+        if (scrollInfo is ScrollEndNotification) {
+          if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent * 0.9) {
+            controller.loadMorePosts();
+          }
         }
-        final postIndex = index - 1;
-        final post = posts[postIndex];
-        return PostItem(
-          post: post,
-          isLiked: liked[postIndex],
-          showHeart: showHeart[postIndex],
-          onDoubleTap: () => showHeartAnimation(postIndex),
-          onLikeToggle: () => toggleLike(postIndex),
-        );
+        return false;
       },
+      child: ListView.builder(
+        itemCount: controller.posts.length + 2,
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return const StoriesSection();
+          }
+
+          if (index == controller.posts.length + 1) {
+            return Obx(() => controller.hasMorePosts.value
+                ? Container(
+              padding: const EdgeInsets.all(16),
+              alignment: Alignment.center,
+              child: const CircularProgressIndicator(),
+            )
+                : const SizedBox());
+          }
+
+          final postIndex = index - 1;
+          final post = controller.posts[postIndex];
+
+          return Obx(() {
+            final isLiked = controller.likedPostsMap.value[post.id] ?? false;
+
+            return PostItem(
+              post: post,
+              isLiked: isLiked,
+              showHeart: controller.showHeartMap.value[post.id] ?? false,
+              onDoubleTap: () => controller.showHeartAnimation(post.id),
+              onLikeToggle: () => controller.handleLikeToggle(post),
+              onCommentTap: () => controller.navigateToComments(post.id),
+              onProfileTap: () => controller.navigateToProfile(post.ownerId),
+            );
+          });
+        },
+      ),
     );
   }
 }
