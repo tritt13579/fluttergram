@@ -1,42 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import '../../controllers/searchfl_controller.dart';
+import '../../widgets/post_item.dart';
+import '../profile/profile_screen.dart';
 
-class SearchScreen extends StatefulWidget {
+
+class SearchScreen extends GetView<SearchFlutterController> {
   const SearchScreen({super.key});
-
-  @override
-  State<SearchScreen> createState() => _SearchScreenState();
-}
-
-class _SearchScreenState extends State<SearchScreen> {
-  final TextEditingController searchController = TextEditingController();
-
-  bool isShowUsers = false;
-  bool isShowHashtagPosts = false;
-  List<QueryDocumentSnapshot<Map<String, dynamic>>> hashtagPosts = [];
-
-  void onSearchSubmitted(String query) async {
-    if (query.startsWith('#')) {
-      setState(() {
-        isShowUsers = false;
-        isShowHashtagPosts = true;
-      });
-
-      final snapshot = await FirebaseFirestore.instance
-          .collection('posts')
-          .where('hashtags', arrayContains: query.trim())
-          .get();
-
-      setState(() {
-        hashtagPosts = snapshot.docs;
-      });
-    } else {
-      setState(() {
-        isShowUsers = query.isNotEmpty;
-        isShowHashtagPosts = false;
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,54 +20,71 @@ class _SearchScreenState extends State<SearchScreen> {
             color: Colors.grey[900],
             borderRadius: BorderRadius.circular(10),
           ),
-          padding: EdgeInsets.symmetric(horizontal: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
           child: Center(
             child: TextFormField(
-              controller: searchController,
-              style: TextStyle(color: Colors.white),
-              decoration: InputDecoration(
+              controller: controller.textEditingController,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
                 hintText: 'Tìm kiếm',
                 hintStyle: TextStyle(color: Colors.white70),
                 border: InputBorder.none,
                 icon: Icon(Icons.search, color: Colors.white70),
               ),
-              onFieldSubmitted: onSearchSubmitted,
+              onFieldSubmitted: (value) {
+                if (value.startsWith('#')) {
+                  controller.onHashtagSubmitted(value);
+                } else {
+                  controller.onUserSearchSubmitted(value);
+                }
+              },
             ),
           ),
         ),
       ),
-      body: isShowUsers
-          ? buildUserResults()
-          : isShowHashtagPosts
-          ? buildHashtagPosts()
-          : buildGridPlaceholder(),
+      body: Obx(() {
+        if (controller.isLoading.value && controller.searchMode.value != SearchMode.hashtagSuggestions) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        switch (controller.searchMode.value) {
+          case SearchMode.initial:
+            return _buildGridPlaceholder();
+          case SearchMode.users:
+            return _buildUserResults();
+          case SearchMode.hashtagSuggestions:
+            return _buildHashtagSuggestions();
+          case SearchMode.hashtagPosts:
+            return _buildHashtagPosts();
+        }
+      }),
     );
   }
 
-  Widget buildUserResults() {
-    return FutureBuilder(
-      future: FirebaseFirestore.instance
-          .collection('users')
-          .where('username',
-          isGreaterThanOrEqualTo: searchController.text)
-          .where('username',
-          isLessThanOrEqualTo: searchController.text + '\uf8ff')
-          .get(),
+  Widget _buildUserResults() {
+    if (controller.searchQuery.value.isEmpty || controller.searchQuery.value.startsWith('#')) {
+      return _buildGridPlaceholder();
+    }
+
+    return FutureBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      future: controller.fetchUsers(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return Center(child: CircularProgressIndicator());
+        if (snapshot.connectionState == ConnectionState.waiting && controller.userResults.isEmpty) {
+          return const Center(child: CircularProgressIndicator());
         }
-
-        final data = snapshot.data as QuerySnapshot<Map<String, dynamic>>;
-        final users = data.docs;
-
-        if (users.isEmpty) {
+        if (snapshot.hasError) {
           return Center(
+              child: Text('Lỗi: ${snapshot.error}',
+                  style: const TextStyle(color: Colors.white)));
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(
             child: Text('Không tìm thấy người dùng',
                 style: TextStyle(color: Colors.white)),
           );
         }
 
+        final users = snapshot.data!.docs;
         return ListView.builder(
           itemCount: users.length,
           itemBuilder: (context, index) {
@@ -109,11 +97,13 @@ class _SearchScreenState extends State<SearchScreen> {
               )
                   : CircleAvatar(
                 backgroundColor: Colors.grey,
-                child: Icon(Icons.person, color: Colors.white),
+                child: const Icon(Icons.person, color: Colors.white),
               ),
-              title: Text(user['username'],
-                  style: TextStyle(color: Colors.white)),
-              onTap: () {},
+              title: Text(user['username'] ?? 'N/A',
+                  style: const TextStyle(color: Colors.white)),
+              onTap: () {
+                //chuyen huong Profile
+              },
             );
           },
         );
@@ -121,47 +111,72 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget buildHashtagPosts() {
-    if (hashtagPosts.isEmpty) {
-      return Center(
-        child: Text('Không có bài viết với hashtag này',
-            style: TextStyle(color: Colors.white)),
-      );
+
+  Widget _buildHashtagSuggestions() {
+    if (controller.isLoading.value && controller.hashtagSuggestions.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (controller.hashtagSuggestions.isEmpty && controller.searchQuery.value.length > 1) {
+      return const Center(
+          child: Text('Không tìm thấy hashtag nào',
+              style: TextStyle(color: Colors.white)));
+    }
+    if (controller.hashtagSuggestions.isEmpty) {
+      return _buildGridPlaceholder();
     }
 
     return ListView.builder(
-      itemCount: hashtagPosts.length,
+      itemCount: controller.hashtagSuggestions.length,
       itemBuilder: (context, index) {
-        final post = hashtagPosts[index].data();
+        final tag = controller.hashtagSuggestions[index];
         return ListTile(
-          title: Text(post['caption'] ?? '',
-              style: const TextStyle(color: Colors.white)),
-          subtitle: Text(
-            (post['hashtags'] as List<dynamic>?)
-                ?.map((e) => e.toString())
-                .join(', ') ??
-                '',
-            style: TextStyle(color: Colors.white70),
-          ),
-          leading: post['image_url'] != null
-              ? Image.network(post['image_url'], width: 60, fit: BoxFit.cover)
-              : null,
+          leading: const Icon(Icons.tag, color: Colors.white70),
+          title: Text(tag, style: const TextStyle(color: Colors.white)),
+          onTap: () {
+            controller.onHashtagSubmitted(tag);
+          },
         );
       },
     );
   }
 
-  Widget buildGridPlaceholder() {
+  Widget _buildHashtagPosts() {
+    if (controller.hashtagPostsResults.isEmpty) {
+      return const Center(
+        child: Text('Không có bài viết với hashtag này',
+            style: TextStyle(color: Colors.white)),
+      );
+    }
+    return ListView.builder(
+      itemCount: controller.hashtagPostsResults.length,
+      itemBuilder: (context, index) {
+        final post = controller.hashtagPostsResults[index];
+
+        final bool isLiked = false;
+        final bool showHeart = false;
+        return PostItem(
+          post: post,
+          isLiked: isLiked,
+          showHeart: showHeart,
+          onDoubleTap: () {},
+          onLikeToggle: () {},
+          onCommentTap: () {},
+          onProfileTap: () {},
+        );
+      },
+    );
+  }
+
+  Widget _buildGridPlaceholder() {
     final List<String> imageUrls = List.generate(
       30,
           (index) => 'https://picsum.photos/seed/image$index/200/200',
     );
-
     return Padding(
       padding: const EdgeInsets.all(4.0),
       child: GridView.builder(
         itemCount: imageUrls.length,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 3,
           crossAxisSpacing: 4,
           mainAxisSpacing: 4,
@@ -170,6 +185,12 @@ class _SearchScreenState extends State<SearchScreen> {
           return Image.network(
             imageUrls[index],
             fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return const Center(child: CircularProgressIndicator(strokeWidth: 2.0));
+            },
+            errorBuilder: (context, error, stackTrace) =>
+            const Icon(Icons.broken_image, color: Colors.grey),
           );
         },
       ),
