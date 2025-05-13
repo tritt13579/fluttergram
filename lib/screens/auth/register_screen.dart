@@ -56,11 +56,11 @@ class _SignupState extends State<RegisterScreen> {
           text: TextSpan(
             children: [
               const TextSpan(
-                text: "Already have an account? ",
+                text: "Đã có tài khoản? ",
                 style: TextStyle(color: Colors.grey, fontSize: 16),
               ),
               TextSpan(
-                text: "Log In",
+                text: "Đăng nhập",
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -96,7 +96,7 @@ class _SignupState extends State<RegisterScreen> {
                       ),
                     ),
                     Text(
-                      'Register Account',
+                      'Đăng ký tài khoản',
                       style: GoogleFonts.raleway(
                         textStyle: const TextStyle(
                           color: Colors.white,
@@ -124,7 +124,7 @@ class _SignupState extends State<RegisterScreen> {
 
               // Email
               Text(
-                "Email Address",
+                "Địa chỉ email",
                 style: GoogleFonts.raleway(
                   textStyle: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
@@ -137,7 +137,7 @@ class _SignupState extends State<RegisterScreen> {
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: Colors.white10,
-                  hintText: 'Enter your Email Address',
+                  hintText: 'Nhập địa chỉ email của bạn',
                   hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -149,7 +149,7 @@ class _SignupState extends State<RegisterScreen> {
 
               // Username
               Text(
-                "Username",
+                "Tên người dùng",
                 style: GoogleFonts.raleway(
                   textStyle: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
@@ -162,7 +162,7 @@ class _SignupState extends State<RegisterScreen> {
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: Colors.white10,
-                  hintText: 'Enter your Username',
+                  hintText: 'Nhập tên người dùng của bạn',
                   hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -174,7 +174,7 @@ class _SignupState extends State<RegisterScreen> {
 
               // Full Name
               Text(
-                "Full Name",
+                "Họ và tên",
                 style: GoogleFonts.raleway(
                   textStyle: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
@@ -187,7 +187,7 @@ class _SignupState extends State<RegisterScreen> {
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: Colors.white10,
-                  hintText: 'Enter your Full Name',
+                  hintText: 'Nhập họ và tên của bạn',
                   hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -199,7 +199,7 @@ class _SignupState extends State<RegisterScreen> {
 
               // Bio
               Text(
-                "Bio (option)",
+                "Tiểu sử (tùy chọn)",
                 style: GoogleFonts.raleway(
                   textStyle: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
@@ -212,7 +212,7 @@ class _SignupState extends State<RegisterScreen> {
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: Colors.white10,
-                  hintText: 'Enter your Bio (option)',
+                  hintText: 'Nhập tiểu sử của bạn',
                   hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -224,7 +224,7 @@ class _SignupState extends State<RegisterScreen> {
 
               // Password
               Text(
-                "Password",
+                "Mật khẩu",
                 style: GoogleFonts.raleway(
                   textStyle: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
@@ -237,7 +237,7 @@ class _SignupState extends State<RegisterScreen> {
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: Colors.white10,
-                  hintText: 'Enter your Password',
+                  hintText: 'Nhập mật khẩu của bạn',
                   hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -249,7 +249,7 @@ class _SignupState extends State<RegisterScreen> {
 
               // Confirm Password
               Text(
-                "Confirm Password",
+                "Nhập lại mật khẩu",
                 style: GoogleFonts.raleway(
                   textStyle: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
@@ -262,7 +262,7 @@ class _SignupState extends State<RegisterScreen> {
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: Colors.white10,
-                  hintText: 'Enter your Confirm Password',
+                  hintText: 'Nhập lại mật khẩu của bạn',
                   hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -275,7 +275,7 @@ class _SignupState extends State<RegisterScreen> {
               // Sign Up Button
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xff0D6EFD),
+                  backgroundColor: Colors.red[400],
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -286,7 +286,7 @@ class _SignupState extends State<RegisterScreen> {
                   if (_passwordController.text != _confirmPasswordController.text) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text("Passwords do not match"),
+                        content: Text("Mật khẩu không khớp"),
                         backgroundColor: Colors.red,
                       ),
                     );
@@ -304,7 +304,7 @@ class _SignupState extends State<RegisterScreen> {
                     context: context,
                   );
                 },
-                child: const Text("Sign Up", style: TextStyle(color: Colors.white)),
+                child: const Text("Đăng ký", style: TextStyle(color: Colors.white)),
               ),
             ],
           ),

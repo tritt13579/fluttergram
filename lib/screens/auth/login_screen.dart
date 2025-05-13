@@ -64,11 +64,11 @@ class _LoginState extends State<LoginScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _labelText('Email Address'),
+        _labelText('Địa chỉ email'),
         const SizedBox(height: 16),
         _textField(
           controller: _emailController,
-          hintText: 'Enter your email',
+          hintText: 'Nhập email của bạn',
           obscureText: false,
         ),
       ],
@@ -79,11 +79,11 @@ class _LoginState extends State<LoginScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _labelText('Password'),
+        _labelText('Mật khẩu'),
         const SizedBox(height: 16),
         _textField(
           controller: _passwordController,
-          hintText: 'Enter your password',
+          hintText: 'Nhập mật khẩu',
           obscureText: true,
         ),
       ],
@@ -128,7 +128,7 @@ class _LoginState extends State<LoginScreen> {
   Widget _signin(BuildContext context) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xff0D6EFD),
+        backgroundColor: Colors.red[400],
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
         ),
@@ -143,7 +143,7 @@ class _LoginState extends State<LoginScreen> {
         );
       },
       child: const Text(
-        "Sign In",
+        "Đăng nhập",
         style: TextStyle(color: Colors.white),
       ),
     );
@@ -158,11 +158,11 @@ class _LoginState extends State<LoginScreen> {
         text: TextSpan(
           children: [
             const TextSpan(
-              text: "New User? ",
+              text: "Người dùng mới? ",
               style: TextStyle(color: Colors.grey, fontSize: 16),
             ),
             TextSpan(
-              text: "Create Account",
+              text: "Tạo tài khoản",
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,

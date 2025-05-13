@@ -45,7 +45,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Error loading user profile: $e');
+      debugPrint('Lỗi: $e');
     }
   }
 
@@ -93,9 +93,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: const [
-                        _StatItem(value: '0', label: 'Posts'),
-                        _StatItem(value: '0', label: 'Followers'),
-                        _StatItem(value: '0', label: 'Following'),
+                        _StatItem(value: '0', label: 'Bài viết'),
+                        _StatItem(value: '0', label: 'Người theo dõi'),
+                        _StatItem(value: '0', label: 'Đang theo dõi'),
                       ],
                     ),
                   ),
@@ -167,7 +167,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           _loadUserProfile();
                         }
                       },
-                      child: const Text('Edit Profile'),
+                      child: const Text('Chỉnh sửa trang cá nhân'),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -180,7 +180,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       onPressed: () {
                         AuthService().signout(context: context);
                       },
-                      child: const Text('Log Out'),
+                      child: const Text('Đăng xuất'),
                     ),
                   ),
                 ],
