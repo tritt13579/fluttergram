@@ -11,7 +11,6 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-
 class _ProfileScreenState extends State<ProfileScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -21,6 +20,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String bio = '';
   String avatarUrl = '';
   bool isLoading = true;
+  int postCount = 0;
+  int followerCount = 0;
+  int followingCount = 0;
 
   @override
   void initState() {
@@ -41,11 +43,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
           fullname = data['fullname'] ?? '';
           bio = data['bio'] ?? '';
           avatarUrl = data['avatar_url'] ?? '';
+          postCount = data['post_count'] ?? 0;
+          followerCount = data['follower_count'] ?? 0;
+          followingCount = data['following_count'] ?? 0;
           isLoading = false;
         });
       }
     } catch (e) {
-      debugPrint('Lỗi: $e');
+      debugPrint('Lỗi khi tải thông tin người dùng: $e');
     }
   }
 
@@ -63,7 +68,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Avatar
+            // Avatar và thống kê
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
@@ -74,8 +79,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         radius: 40,
                         backgroundImage: avatarUrl.isNotEmpty
                             ? NetworkImage(avatarUrl)
-                            : const AssetImage('assets/avatar.png')
-                        as ImageProvider,
+                            : const AssetImage('assets/avatar.png') as ImageProvider,
                       ),
                       Positioned(
                         bottom: 0,
@@ -92,10 +96,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Expanded(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: const [
-                        _StatItem(value: '0', label: 'Bài viết'),
-                        _StatItem(value: '0', label: 'Người theo dõi'),
-                        _StatItem(value: '0', label: 'Đang theo dõi'),
+                      children: [
+                        _StatItem(value: postCount.toString(), label: 'Bài viết'),
+                        _StatItem(value: followerCount.toString(), label: 'Người theo dõi'),
+                        _StatItem(value: followingCount.toString(), label: 'Đang theo dõi'),
                       ],
                     ),
                   ),
@@ -113,12 +117,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
+                    fontSize: 16,
                   ),
                 ),
               ),
             ),
 
-            // username
+            // Tên người dùng
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Align(
@@ -130,7 +135,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
 
-            // Bio
+            // Tiểu sử
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Align(
@@ -144,7 +149,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 12),
 
-            // Các nút
+            // Nút chức năng
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
@@ -162,7 +167,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             builder: (context) => const EditProfileScreen(),
                           ),
                         );
-
                         if (result == true) {
                           _loadUserProfile();
                         }
@@ -219,6 +223,7 @@ class _StatItem extends StatelessWidget {
             color: Colors.grey,
           ),
         ),
+
       ],
     );
   }
