@@ -286,7 +286,6 @@ class FirebaseService {
     });
   }
 
-  // Suggestions stream (users not in conversation)
   Stream<List<UserModel>> getFilteredSuggestionsStream(String currentUserId) {
     return _firestore.collection('users').snapshots().asyncMap((snapshot) async {
       // Lấy danh sách userId đã trò chuyện
