@@ -6,84 +6,40 @@ import '../models/user_model.dart';
 
 class MessagesController extends GetxController {
   final FirebaseService _firebaseService = FirebaseService();
-  List<UserModel> recentMessages = [];
-  List<UserModel> recommended = [];
-  User? currentUser;
-  String currentUsername = "";
-  String currentUserId = "";
+  String currentUserId = '';
+  String currentUsername = '';
 
   @override
   void onInit() {
     super.onInit();
-    fetchUserData();
+    fetchCurrentUser();
   }
 
-  Future<void> fetchUserData() async {
-    currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) return;
+  Future<void> fetchCurrentUser() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
-    currentUserId = currentUser!.uid;
+    currentUserId = user.uid;
 
-    final userSnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUserId)
-        .get();
-
-    if (userSnapshot.exists) {
-      final userData = userSnapshot.data();
-      currentUsername = userData!['username'] ?? 'Unknown';
-    }
-    _firebaseService.getUsersStream().listen((users) async {
-      final otherUsers = users.where((u) => u.uid != currentUserId).toList();
-
-      final conversationSnapshots = await FirebaseFirestore.instance
-          .collection('conversations')
-          .where('members', arrayContains: currentUserId)
-          .get();
-
-      final existingUserIds = <String>{};
-      for (var doc in conversationSnapshots.docs) {
-        final members = List<String>.from(doc['members']);
-        final otherUserId = members.firstWhere((id) => id != currentUserId);
-        existingUserIds.add(otherUserId);
-      }
-
-      _firebaseService.getRecentConversations(currentUserId).listen((recentUsers) {
-        recentMessages = recentUsers;
-
-        recommended = otherUsers
-            .where((u) => !existingUserIds.contains(u.uid))
-            .take(15)
-            .toList();
-
-        update();
-      }, onError: (e) {
-        recommended = otherUsers
-            .where((u) => !existingUserIds.contains(u.uid))
-            .take(15)
-            .toList();
-        update();
-      });
-    });
-  }
-
-  void addToRecentMessages(UserModel user) {
-    if (!recentMessages.any((u) => u.uid == user.uid)) {
-      recentMessages.add(user);
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUserId).get();
+    if (userDoc.exists) {
+      currentUsername = userDoc.data()?['username'] ?? '';
       update();
     }
   }
 
-  void removeFromRecommended(UserModel user) {
-    recommended.removeWhere((u) => u.uid == user.uid);
-    update();
+  Stream<List<UserModel>> getRecentConversationsStream() {
+    if (currentUserId.isEmpty) return Stream.value([]);
+    return _firebaseService.getRecentConversations(currentUserId);
+  }
+
+  Stream<List<UserModel>> getSuggestionsStream() {
+    if (currentUserId.isEmpty) return Stream.value([]);
+    return _firebaseService.getFilteredSuggestionsStream(currentUserId);
   }
 
   Future<void> deleteConversationAndMessages(String otherUserId) async {
     await _firebaseService.deleteConversation(currentUserId, otherUserId);
-    recentMessages.removeWhere((user) => user.uid == otherUserId);
-
-    update();
-    await fetchUserData();
+    update(); // để làm mới UI nếu cần
   }
 }
