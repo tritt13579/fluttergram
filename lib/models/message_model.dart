@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MessageModel {
+  final String id; // thêm id document Firestore
   final String senderUid;
   final String senderName;
   final String senderAvatar;
@@ -9,6 +10,7 @@ class MessageModel {
   final DateTime timestamp;
 
   MessageModel({
+    required this.id,
     required this.senderUid,
     required this.senderName,
     required this.senderAvatar,
@@ -17,13 +19,14 @@ class MessageModel {
     required this.timestamp,
   });
 
-  factory MessageModel.fromMap(Map<String, dynamic> map) {
+  factory MessageModel.fromMap(Map<String, dynamic> map, {String? id}) {
     return MessageModel(
-      senderUid: map['sender_uid'],
-      senderName: map['sender_name'],
-      senderAvatar: map['sender_avatar'],
-      receiverUid: map['receiver_uid'],
-      message: map['message'],
+      id: id ?? '',
+      senderUid: map['sender_uid'] ?? '',
+      senderName: map['sender_name'] ?? '',
+      senderAvatar: map['sender_avatar'] ?? '',
+      receiverUid: map['receiver_uid'] ?? '',
+      message: map['message'] ?? '',
       timestamp: (map['createdAt'] as Timestamp).toDate(),
     );
   }

@@ -209,7 +209,9 @@ class FirebaseService {
           .collection('conversations/$conversationId/messages')
           .orderBy('createdAt')
           .snapshots()
-          .map((snapshot) => snapshot.docs.map((e) => MessageModel.fromMap(e.data())).toList());
+          .map((snapshot) => snapshot.docs.map(
+            (doc) => MessageModel.fromMap(doc.data(), id: doc.id),
+      ).toList());
 
   // Send message
   Future<void> sendMessage(String conversationId, MessageModel msg) async {
@@ -307,4 +309,66 @@ class FirebaseService {
           .toList();
     });
   }
+  Future<void> deleteMessage(String conversationId, String messageId) async {
+    try {
+      final messagesRef = _firestore.collection('conversations/$conversationId/messages');
+
+      // Xóa tin nhắn
+      await messagesRef.doc(messageId).delete();
+
+      // Lấy lại tin nhắn cuối cùng còn lại sau khi xóa
+      final lastMessageQuery = await messagesRef
+          .orderBy('createdAt', descending: true) // Đúng tên trường
+          .limit(1)
+          .get();
+
+      if (lastMessageQuery.docs.isNotEmpty) {
+        final lastMessageDoc = lastMessageQuery.docs.first;
+        await _firestore.collection('conversations').doc(conversationId).update({
+          'last_message': lastMessageDoc['message'],
+          'last_sender_uid': lastMessageDoc['sender_uid'],
+        });
+      } else {
+        await _firestore.collection('conversations').doc(conversationId).update({
+          'last_message': '',
+          'last_sender_uid': '',
+        });
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+  Future<void> updateMessage(String conversationId, String messageId, String newContent) async {
+    final messagesRef = FirebaseFirestore.instance
+        .collection('conversations')
+        .doc(conversationId)
+        .collection('messages');
+
+    final docRef = messagesRef.doc(messageId);
+
+    await docRef.update({
+      'message': newContent,
+      'editedTimestamp': DateTime.now(),
+    });
+
+    // Lấy tin nhắn cuối cùng để so sánh
+    final lastMessageQuery = await messagesRef
+        .orderBy('createdAt', descending: true)
+        .limit(1)
+        .get();
+
+    if (lastMessageQuery.docs.isNotEmpty &&
+        lastMessageQuery.docs.first.id == messageId) {
+      // Nếu message vừa cập nhật là tin nhắn cuối cùng thì cập nhật vào conversations
+      await FirebaseFirestore.instance
+          .collection('conversations')
+          .doc(conversationId)
+          .update({
+        'last_message': newContent,
+        'last_sender_uid': lastMessageQuery.docs.first['sender_uid'],
+        'timestamp': Timestamp.now(), // Có thể cập nhật lại timestamp nếu muốn cập nhật lại vị trí sort
+      });
+    }
+  }
+
 }

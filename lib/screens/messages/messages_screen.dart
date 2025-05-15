@@ -81,7 +81,7 @@ class MessagesScreen extends StatelessWidget {
                               ),
                               title: Text(user.name),
                               subtitle: Text(
-                                user.lastMessage != null
+                                (user.lastMessage != null && user.lastMessage!.trim().isNotEmpty)
                                     ? (user.lastSenderUid == controller.currentUserId
                                     ? 'Bạn: ${user.lastMessage}'
                                     : '${user.name}: ${user.lastMessage}')
