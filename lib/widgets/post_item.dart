@@ -47,7 +47,7 @@ class PostItem extends StatelessWidget {
       leading: CircleAvatar(
         backgroundImage: post.ownerPhotoUrl != null
             ? NetworkImage(post.ownerPhotoUrl!)
-            : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
+            : const AssetImage('assets/images/default_avatar,jpg') as ImageProvider,
       ),
       title: Text(
         post.ownerUsername ?? 'Người dùng',
@@ -192,7 +192,7 @@ class PostItem extends StatelessWidget {
                     post.likeCount.toString(),
                     style: TextStyle(
                       fontSize: 14,
-                      color: isLiked ? Colors.pinkAccent : Colors.black,
+                      color: isLiked ? Colors.pinkAccent : Colors.white,
                     ),
                   ),
                 ),
