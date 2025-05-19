@@ -118,6 +118,41 @@ class HomeController extends GetxController {
     }
   }
 
+  Future<void> deletePost(String postId) async {
+    try {
+      Get.dialog(
+        const Center(child: CircularProgressIndicator()),
+        barrierDismissible: false,
+      );
+
+      await postService.deletePost(postId);
+
+      posts.removeWhere((post) => post.id == postId);
+
+      Get.back();
+
+      Get.snackbar(
+        'Thành công',
+        'Bài viết đã được xóa',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+      );
+    } catch (e) {
+      if (Get.isDialogOpen == true) {
+        Get.back();
+      }
+
+      Get.snackbar(
+        'Lỗi',
+        'Không thể xóa bài viết: $e',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    }
+  }
+
   Future<void> _checkAndUpdateLikeStatus(String postId) async {
     if (currentUserId == null) return;
 

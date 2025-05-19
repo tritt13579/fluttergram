@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
+import '../controllers/home_controller.dart';
 import '../models/post_model.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
@@ -33,7 +34,6 @@ class PostItem extends StatelessWidget {
         _buildHeader(),
         _buildPostMedia(),
         _buildActionBar(),
-        _buildViewLikes(),
         _buildCaption(),
         _buildTimestamp(),
         const SizedBox(height: 16),
@@ -47,13 +47,86 @@ class PostItem extends StatelessWidget {
       leading: CircleAvatar(
         backgroundImage: post.ownerPhotoUrl != null
             ? NetworkImage(post.ownerPhotoUrl!)
-            : const AssetImage('assets/images/default_avatar,jpg') as ImageProvider,
+            : const AssetImage('assets/images/default_avatar.jpg') as ImageProvider,
       ),
       title: Text(
         post.ownerUsername ?? 'Người dùng',
         style: const TextStyle(fontWeight: FontWeight.bold),
       ),
-      trailing: const Icon(Icons.more_vert),
+      trailing: IconButton(
+        icon: const Icon(Icons.more_vert),
+        onPressed: () => _showPostOptions(Get.context!),
+      ),
+    );
+  }
+
+  void _showPostOptions(BuildContext context) {
+    final currentUserId = Get.find<HomeController>().currentUserId;
+    final isOwner = currentUserId == post.ownerId;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.grey[900],
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isOwner)
+                ListTile(
+                  leading: const Icon(Icons.delete, color: Colors.white),
+                  title: const Text('Xóa bài viết', style: TextStyle(color: Colors.white)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _confirmDeletePost(context);
+                  },
+                ),
+              ListTile(
+                leading: const Icon(Icons.share, color: Colors.white),
+                title: const Text('Chia sẻ', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  // Implement share functionality
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.close, color: Colors.white),
+                title: const Text('Đóng', style: TextStyle(color: Colors.white)),
+                onTap: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _confirmDeletePost(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.grey[900],
+          title: const Text('Xóa bài viết', style: TextStyle(color: Colors.white)),
+          content: const Text(
+            'Bạn có chắc chắn muốn xóa bài viết này không?',
+            style: TextStyle(color: Colors.white),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Hủy', style: TextStyle(color: Colors.white)),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Get.find<HomeController>().deletePost(post.id);
+              },
+              child: const Text('Xóa', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -227,26 +300,6 @@ class PostItem extends StatelessWidget {
     );
   }
 
-  Widget _buildViewLikes() {
-    if (post.likeCount <= 0) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: GestureDetector(
-        onTap: () {
-          // TODO: Navigate to likes screen
-        },
-        child: Text(
-          'Xem lượt thích',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildCaption() {
     if (post.caption.isEmpty) return const SizedBox.shrink();
 
@@ -257,8 +310,8 @@ class PostItem extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
         ),
         TextSpan(
-          text: post.caption,
-          style: const TextStyle( fontSize: 16)
+            text: post.caption,
+            style: const TextStyle(fontSize: 16)
         ),
       ],
     );

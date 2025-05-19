@@ -16,7 +16,6 @@ class CommentBottomSheet extends StatelessWidget {
     required this.controller,
   });
 
-  // Phương thức để hiển thị bottom sheet
   static Future<void> show({
     required BuildContext context,
     required String postId,
@@ -173,73 +172,6 @@ class CommentBottomSheet extends StatelessWidget {
     );
   }
 
-  // Widget _buildCommentInput() {
-  //   return AnimatedContainer(
-  //     duration: const Duration(milliseconds: 200),
-  //     padding: EdgeInsets.only(
-  //       left: 16,
-  //       right: 16,
-  //       top: 10,
-  //       bottom: 10,
-  //     ),
-  //     decoration: BoxDecoration(
-  //       color: Colors.black,
-  //       border: Border(
-  //         top: BorderSide(color: Colors.grey[800]!),
-  //       ),
-  //     ),
-  //     child: Row(
-  //       children: [
-  //         CircleAvatar(
-  //           radius: 18,
-  //           backgroundImage: controller.currentUserId != null
-  //               ? NetworkImage('https://picsum.photos/150') // Replace with user avatar
-  //               : const AssetImage('assets/images/default_avatar.jpg') as ImageProvider,
-  //         ),
-  //         const SizedBox(width: 12),
-  //         Expanded(
-  //           child: TextField(
-  //             controller: controller.commentController,
-  //             decoration: InputDecoration(
-  //               hintText: 'Thêm bình luận...',
-  //               hintStyle: TextStyle(color: Colors.grey[400]),
-  //               border: InputBorder.none,
-  //               contentPadding: const EdgeInsets.symmetric(horizontal: 15),
-  //               filled: true,
-  //               fillColor: Colors.grey[900],
-  //               enabledBorder: OutlineInputBorder(
-  //                 borderRadius: BorderRadius.circular(20),
-  //                 borderSide: BorderSide(color: Colors.grey[800]!),
-  //               ),
-  //               focusedBorder: OutlineInputBorder(
-  //                 borderRadius: BorderRadius.circular(20),
-  //                 borderSide: BorderSide(color: Colors.red[400]!),
-  //               ),
-  //             ),
-  //             style: const TextStyle(color: Colors.white),
-  //             maxLines: null,
-  //           ),
-  //         ),
-  //         const SizedBox(width: 12),
-  //         GestureDetector(
-  //           onTap: () => controller.addComment(postId),
-  //           child: Container(
-  //             padding: const EdgeInsets.all(8),
-  //             decoration: BoxDecoration(
-  //               shape: BoxShape.circle,
-  //               color: Colors.red[400],
-  //             ),
-  //             child: const Icon(
-  //               Icons.send,
-  //               color: Colors.white,
-  //               size: 20,
-  //             ),
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
   Widget _buildCommentInput() {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -286,7 +218,7 @@ class CommentBottomSheet extends StatelessWidget {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(20),
-                  borderSide: BorderSide(color: Colors.red[400]!),
+                  borderSide: BorderSide(color: Colors.pinkAccent),
                 ),
               ),
               style: const TextStyle(color: Colors.white),
@@ -300,7 +232,7 @@ class CommentBottomSheet extends StatelessWidget {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.red[400],
+                color: Colors.pinkAccent,
               ),
               child: const Icon(
                 Icons.send,
