@@ -212,7 +212,7 @@ class PostItem extends StatelessWidget {
                     post.commentCount.toString(),
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.black,
+                      color: Colors.white,
                     ),
                   ),
                 ),

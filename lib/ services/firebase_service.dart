@@ -152,7 +152,6 @@ class FirebaseService {
           path: path,
           upsert: true
       );
-      // Adding timestamp query parameter to force refresh on UI
       return "$downloadUrl?ts=${DateTime.now().millisecondsSinceEpoch}";
     } catch (e) {
       rethrow;
