@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttergram/screens/profile/post_profile_screen.dart';
 import '../../services/firebase_service.dart';
 import '../../controllers/auth_controller.dart';
 import '../../models/post_model.dart';
@@ -214,7 +215,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                     return GestureDetector(
                       onTap: () {
-                        // TODO: Mở màn hình chi tiết bài viết
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PostProfileScreen(posts: userPosts, initialIndex: index),
+                          ),
+                        );
                       },
                       child: Image.network(
                         imageUrl,
