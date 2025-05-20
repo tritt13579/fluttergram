@@ -5,8 +5,6 @@ import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:file_picker/file_picker.dart';
-import '../../ services/firebase_service.dart';
 import '../../controllers/messages_controller.dart';
 import '../../models/message_model.dart';
 import '../../models/user_model.dart';
@@ -21,42 +19,45 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
+  final MessagesController _controller = Get.find<MessagesController>();
   List<File> _selectedImages = [];
-
   bool _isEditing = false;
   String? _editingMessageId;
+  late String _conversationId;
 
-  String getConversationId(String uid1, String uid2) {
-    final sorted = [uid1, uid2]..sort();
-    return '${sorted[0]}_${sorted[1]}';
-  }
+  final currentUser = FirebaseAuth.instance.currentUser!;
 
-  void _sendMessage() async {
+  Future<void> _sendMessage() async {
     final messageText = _messageController.text.trim();
-    if (messageText.isEmpty) return;
-
-    final currentUser = FirebaseAuth.instance.currentUser!;
-    final conversationId = getConversationId(currentUser.uid, widget.user.uid);
-
+    if (messageText.isEmpty && _selectedImages.isEmpty) return;
     final userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).get();
     final senderName = userDoc.data()?['fullname'] ?? 'Bạn';
     final senderAvatar = userDoc.data()?['avatar_url'] ?? 'https://www.gravatar.com/avatar/placeholder?s=150&d=mp';
 
+    List<String> uploadedImageUrls = [];
+    if (_selectedImages.isNotEmpty) {
+      uploadedImageUrls = await _controller.uploadImages(images: _selectedImages, path: 'chat_images/$_conversationId');
+    }
+
     if (_isEditing && _editingMessageId != null) {
-      // Cập nhật tin nhắn đã tồn tại
-      await FirebaseService().updateMessage(
-        conversationId,
+      // Lấy tin nhắn cũ
+      final oldMessage = await _controller.getMessageById(_conversationId, _editingMessageId!);
+      final keepOldImages = oldMessage.images.isNotEmpty;
+
+      await _controller.updateMessage(
+        _conversationId,
         _editingMessageId!,
         messageText,
+        images: keepOldImages ? oldMessage.images : uploadedImageUrls,
       );
 
       setState(() {
         _isEditing = false;
         _editingMessageId = null;
+        _selectedImages.clear();
       });
-    } else {
-      // Gửi tin nhắn mới
+    }
+    else {
       final message = MessageModel(
         senderUid: currentUser.uid,
         senderName: senderName,
@@ -65,16 +66,18 @@ class _ChatScreenState extends State<ChatScreen> {
         message: messageText,
         timestamp: DateTime.now(),
         id: '',
+        images: uploadedImageUrls,
       );
 
-      await FirebaseService().sendMessage(conversationId, message);
+      await _controller.sendMessage(_conversationId, message, imageUrls: uploadedImageUrls);
     }
 
-    final controller = Get.find<MessagesController>();
     _messageController.clear();
+    setState(() {
+      _selectedImages.clear();
+    });
   }
 
-  // Format timestamp for message
   String _formatTimestamp(DateTime timestamp) {
     final now = DateTime.now();
     final difference = now.difference(timestamp);
@@ -111,95 +114,44 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  // Select Image
   Future<void> _pickImages() async {
     final picker = ImagePicker();
     final List<XFile>? files = await picker.pickMultiImage();
+
     if (files != null && files.isNotEmpty) {
+      List<File> validImages = [];
+
+      for (XFile file in files) {
+        final imageFile = File(file.path);
+        final fileSize = await imageFile.length();
+
+        if (fileSize <= 3 * 1024 * 1024) {
+          validImages.add(imageFile);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Ảnh "${file.name}" vượt quá 3MB và đã bị bỏ qua.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+
       setState(() {
-        _selectedImages = files.map((f) => File(f.path)).toList();
+        _selectedImages = validImages;
       });
     }
   }
-  void _showMessageOptionsDialog(MessageModel msg) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return SafeArea(
-          child: Wrap(
-            children: [
-              ListTile(
-                leading: Icon(Icons.delete, color: Colors.red),
-                title: Text('Xóa tin nhắn'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  final currentUser = FirebaseAuth.instance.currentUser!;
-                  final conversationId = getConversationId(currentUser.uid, widget.user.uid);
 
-                  if (msg.senderUid == currentUser.uid) {
-                    await FirebaseService().deleteMessage(conversationId, msg.id);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Bạn chỉ có thể xóa tin nhắn của mình')),
-                    );
-                  }
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.edit),
-                title: Text('Chỉnh sửa tin nhắn'),
-                onTap: () {
-                  Navigator.pop(context);
-                  final currentUser = FirebaseAuth.instance.currentUser!;
-                  if (msg.senderUid == currentUser.uid) {
-                    setState(() {
-                      _isEditing = true;
-                      _editingMessageId = msg.id;
-                      _messageController.text = msg.message;
-                      _messageController.selection = TextSelection.fromPosition(
-                        TextPosition(offset: _messageController.text.length),
-                      );
-                      // Cuộn đến tin nhắn đó nếu muốn
-                      Future.delayed(Duration(milliseconds: 100), () {
-                        _scrollController.animateTo(
-                          _scrollController.position.maxScrollExtent,
-                          duration: Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        );
-                      });
-                    });
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Bạn chỉ có thể chỉnh sửa tin nhắn của mình')),
-                    );
-                  }
-                },
-              ),
-              // ListTile(
-              //   leading: Icon(Icons.reply),
-              //   title: Text('Trả lời tin nhắn'),
-              //   onTap: () {
-              //     Navigator.pop(context);
-              //     // TODO: Xử lý trả lời tin nhắn nếu cần
-              //   },
-              // ),
-              ListTile(
-                leading: Icon(Icons.close),
-                title: Text('Hủy'),
-                onTap: () => Navigator.pop(context),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+  @override
+  void initState() {
+    super.initState();
+    final currentUser = FirebaseAuth.instance.currentUser!;
+    _conversationId = _controller.getConversationId(currentUser.uid, widget.user.uid);
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = FirebaseAuth.instance.currentUser!;
-    final conversationId = getConversationId(currentUser.uid, widget.user.uid);
-
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.user.name),
@@ -222,44 +174,38 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Expanded(
             child: StreamBuilder<List<MessageModel>>(
-              stream: FirebaseService().getMessagesStream(conversationId),
+              stream: _controller.getMessagesStream(_conversationId),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(child: CircularProgressIndicator());
                 }
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Center(child: Text('Chưa có tin nhắn.'));
-                }
-                final messages = snapshot.data!;
+
+                final messages = snapshot.data ?? [];
 
                 return ListView.builder(
-                  controller: _scrollController,
+                  reverse: false,
                   padding: const EdgeInsets.all(8),
-                  itemCount: messages.length + 1, // thêm 1 dòng đầu avatar
+                  itemCount: messages.length + 1,
                   itemBuilder: (context, index) {
                     if (index == 0) {
-                      // Phần avatar và thông tin người nhận
-                      return Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          children: [
-                            CircleAvatar(
-                              backgroundImage: NetworkImage(widget.user.avatar),
-                              radius: 40,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(widget.user.name, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                            Text(widget.user.username, style: TextStyle(color: Colors.grey)),
-                            const SizedBox(height: 4),
-                            Text('1 người theo dõi - 0 bài viết', style: TextStyle(color: Colors.grey)),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Bạn đã theo dõi tài khoản Instagram này từ năm 2025',
-                              style: TextStyle(color: Colors.grey, fontSize: 12),
-                            ),
-                            const Divider(height: 24),
-                          ],
-                        ),
+                      return Column(
+                        children: [
+                          const SizedBox(height: 16),
+                          CircleAvatar(
+                            backgroundImage: NetworkImage(widget.user.avatar),
+                            radius: 40,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(widget.user.name,
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          Text(widget.user.username, style: TextStyle(color: Colors.grey)),
+                          const SizedBox(height: 4),
+                          Text('1 người theo dõi - 0 bài viết', style: TextStyle(color: Colors.grey)),
+                          const SizedBox(height: 4),
+                          Text('Bạn đã theo dõi tài khoản Instagram này từ năm 2025',
+                              style: TextStyle(color: Colors.grey, fontSize: 12)),
+                          const SizedBox(height: 16),
+                        ],
                       );
                     }
 
@@ -296,55 +242,101 @@ class _ChatScreenState extends State<ChatScreen> {
                     return GestureDetector(
                       onLongPress: () => _showMessageOptionsDialog(msg),
                       child: Column(
-                        crossAxisAlignment: isSender
-                            ? CrossAxisAlignment.end
-                            : CrossAxisAlignment.start,
+                        crossAxisAlignment:
+                        isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                         children: [
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 4),
                             child: Text(
                               _formatTimestamp(msg.timestamp),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.white54,
-                              ),
+                              style: TextStyle(fontSize: 12, color: Colors.white54),
                             ),
                           ),
                           Align(
-                            alignment:
-                            isSender ? Alignment.centerRight : Alignment.centerLeft,
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(vertical: 2),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: isSender ? Colors.blueAccent : Colors.grey.shade300,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                msg.message,
-                                style: TextStyle(
-                                  color: isSender ? Colors.white : Colors.black87,
-                                  fontSize: 16,
-                                ),
-                              ),
+                            alignment: isSender ? Alignment.centerRight : Alignment.centerLeft,
+                            child: Column(
+                              crossAxisAlignment:
+                              isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                              children: [
+                                if (msg.images.isNotEmpty) ...[
+                                  if (msg.images.length == 1)
+                                    GestureDetector(
+                                      onTap: () => _openImageFullScreen(context, msg.images, 0),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Image.network(
+                                          msg.images[0],
+                                          width: MediaQuery.of(context).size.width * 0.6,
+                                          height: MediaQuery.of(context).size.width * 0.6,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    SizedBox(
+                                      width: MediaQuery.of(context).size.width * 0.6,
+                                      child: GridView.builder(
+                                        shrinkWrap: true,
+                                        physics: NeverScrollableScrollPhysics(),
+                                        itemCount: msg.images.length,
+                                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                          crossAxisCount: 2,
+                                          mainAxisSpacing: 8,
+                                          crossAxisSpacing: 8,
+                                          childAspectRatio: 1,
+                                        ),
+                                        itemBuilder: (context, index) {
+                                          return GestureDetector(
+                                            onTap: () => _openImageFullScreen(context, msg.images, index),
+                                            child: ClipRRect(
+                                              borderRadius: BorderRadius.circular(12),
+                                              child: Image.network(
+                                                msg.images[index],
+                                                fit: BoxFit.cover,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                ],
+                                if (msg.message.isNotEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: isSender ? Colors.blueAccent : Colors.grey.shade300,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      msg.message,
+                                      style: TextStyle(
+                                        color: isSender ? Colors.white : Colors.black87,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                                SizedBox(height: 8),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     );
+
                   },
                 );
               },
             ),
           ),
-          // Phần input gửi tin nhắn giữ nguyên
+
+          // input giữ nguyên
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             child: Column(
               children: [
                 if (_selectedImages.isNotEmpty)
                   SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.3,
+                    height: MediaQuery.of(context).size.height * 0.2,
                     child: GridView.builder(
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 3,
@@ -374,42 +366,40 @@ class _ChatScreenState extends State<ChatScreen> {
                                   _selectedImages.removeAt(index);
                                 });
                               },
-                              child: CircleAvatar(
-                                radius: 12,
-                                backgroundColor: Colors.black54,
-                                child:
-                                Icon(Icons.close, size: 16, color: Colors.white),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.black54,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(Icons.close, color: Colors.white, size: 20),
                               ),
-                            ),
+                            )
                           ],
                         );
                       },
                     ),
                   ),
-                SizedBox(height: 5),
                 Row(
                   children: [
                     IconButton(
-                      icon: Icon(Icons.image, color: Colors.blueAccent),
                       onPressed: _pickImages,
+                      icon: Icon(Icons.photo),
+                      color: Colors.blue,
+                      tooltip: 'Chọn ảnh',
                     ),
                     Expanded(
                       child: TextField(
                         controller: _messageController,
                         decoration: InputDecoration(
-                          hintText: 'Nhắn tin...',
-                          filled: true,
-                          fillColor: Colors.white12,
-                          contentPadding:
-                          const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          hintText: 'Nhập tin nhắn...',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(30),
-                            borderSide: BorderSide.none,
                           ),
+                          contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
                     ElevatedButton(
                       onPressed: _sendMessage,
                       style: ElevatedButton.styleFrom(
@@ -427,8 +417,103 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ],
             ),
-          )
+          ),
         ],
+      ),
+    );
+  }
+
+  void _showMessageOptionsDialog(MessageModel msg) {
+    final isSender = msg.senderUid == currentUser.uid;
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isSender)
+              ListTile(
+                leading: Icon(Icons.edit),
+                title: Text('Chỉnh sửa'),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _isEditing = true;
+                    _editingMessageId = msg.id;
+                    _messageController.text = msg.message;
+                  });
+                },
+              ),
+            if (isSender)
+              ListTile(
+                leading: Icon(Icons.delete),
+                title: Text('Xóa'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  // Hiện dialog xác nhận xóa
+                  final confirmDelete = await showDialog<bool>(
+                    context: context,
+                    builder: (context) {
+                      return AlertDialog(
+                        title: Text('Xác nhận'),
+                        content: Text('Bạn có chắc muốn xóa tin nhắn này?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            child: Text('Hủy'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            child: Text('Xóa', style: TextStyle(color: Colors.red)),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+
+                  if (confirmDelete == true) {
+                    final currentUser = FirebaseAuth.instance.currentUser!;
+                    final conversationId = _controller.getConversationId(currentUser.uid, widget.user.uid);
+
+                    if (msg.senderUid == currentUser.uid) {
+                      await _controller.deleteMessage(conversationId, msg.id);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Bạn chỉ có thể xóa tin nhắn của mình')),
+                      );
+                    }
+                  }
+                },
+              ),
+            ListTile(
+              leading: Icon(Icons.close),
+              title: Text('Đóng'),
+              onTap: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  void _openImageFullScreen(BuildContext context, List<String> images, int initialIndex) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(backgroundColor: Colors.transparent),
+          body: PageView.builder(
+            controller: PageController(initialPage: initialIndex),
+            itemCount: images.length,
+            itemBuilder: (context, index) {
+              return InteractiveViewer(
+                child: Center(
+                  child: Image.network(images[index]),
+                ),
+              );
+            },
+          ),
+        ),
       ),
     );
   }
