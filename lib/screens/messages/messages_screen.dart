@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/messages_controller.dart';
 import '../../models/user_model.dart';
+import '../profile/profile_screen.dart';
 import 'chat_screen.dart';
 
 class MessagesScreen extends StatelessWidget {
@@ -17,7 +18,7 @@ class MessagesScreen extends StatelessWidget {
               ? controller.currentUsername
               : 'Tài khoản'),
           actions: [
-            IconButton(icon: const Icon(Icons.edit_square), onPressed: () {}),
+            IconButton(icon: const Icon(Icons.edit_square), onPressed: () {Get.to(() => const ProfileScreen());}),
           ],
         ),
         body: SingleChildScrollView(

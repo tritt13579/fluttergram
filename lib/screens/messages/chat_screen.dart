@@ -19,6 +19,7 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   final MessagesController _controller = Get.find<MessagesController>();
   List<File> _selectedImages = [];
   bool _isEditing = false;
@@ -27,56 +28,87 @@ class _ChatScreenState extends State<ChatScreen> {
 
   final currentUser = FirebaseAuth.instance.currentUser!;
 
+  bool _isUploading = false;
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
   Future<void> _sendMessage() async {
     final messageText = _messageController.text.trim();
     if (messageText.isEmpty && _selectedImages.isEmpty) return;
-    final userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).get();
-    final senderName = userDoc.data()?['fullname'] ?? 'Bạn';
-    final senderAvatar = userDoc.data()?['avatar_url'] ?? 'https://www.gravatar.com/avatar/placeholder?s=150&d=mp';
 
-    List<String> uploadedImageUrls = [];
+    if (_isUploading) return;  // Nếu đang gửi ảnh thì không cho gửi thêm
+
     if (_selectedImages.isNotEmpty) {
-      uploadedImageUrls = await _controller.uploadImages(images: _selectedImages, path: 'chat_images/$_conversationId');
-    }
-
-    if (_isEditing && _editingMessageId != null) {
-      // Lấy tin nhắn cũ
-      final oldMessage = await _controller.getMessageById(_conversationId, _editingMessageId!);
-      final keepOldImages = oldMessage.images.isNotEmpty;
-
-      await _controller.updateMessage(
-        _conversationId,
-        _editingMessageId!,
-        messageText,
-        images: keepOldImages ? oldMessage.images : uploadedImageUrls,
-      );
-
       setState(() {
-        _isEditing = false;
-        _editingMessageId = null;
-        _selectedImages.clear();
+        _isUploading = true;
       });
     }
-    else {
-      final message = MessageModel(
-        senderUid: currentUser.uid,
-        senderName: senderName,
-        senderAvatar: senderAvatar,
-        receiverUid: widget.user.uid,
-        message: messageText,
-        timestamp: DateTime.now(),
-        id: '',
-        images: uploadedImageUrls,
+
+    try {
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).get();
+      final senderName = userDoc.data()?['fullname'] ?? 'Bạn';
+      final senderAvatar = userDoc.data()?['avatar_url'] ?? 'https://www.gravatar.com/avatar/placeholder?s=150&d=mp';
+
+      List<String> uploadedImageUrls = [];
+      if (_selectedImages.isNotEmpty) {
+        uploadedImageUrls = await _controller.uploadImages(images: _selectedImages, path: 'chat_images/$_conversationId');
+      }
+
+      if (_isEditing && _editingMessageId != null) {
+        final oldMessage = await _controller.getMessageById(_conversationId, _editingMessageId!);
+        final keepOldImages = oldMessage.images.isNotEmpty;
+
+        await _controller.updateMessage(
+          _conversationId,
+          _editingMessageId!,
+          messageText,
+          images: keepOldImages ? oldMessage.images : uploadedImageUrls,
+        );
+        setState(() {
+          _isEditing = false;
+          _editingMessageId = null;
+        });
+      } else {
+        final message = MessageModel(
+          senderUid: currentUser.uid,
+          senderName: senderName,
+          senderAvatar: senderAvatar,
+          receiverUid: widget.user.uid,
+          message: messageText,
+          timestamp: DateTime.now(),
+          id: '',
+          images: uploadedImageUrls,
+        );
+
+        await _controller.sendMessage(_conversationId, message, imageUrls: uploadedImageUrls);
+      }
+
+      _messageController.clear();
+
+      if (_selectedImages.isNotEmpty) {
+        setState(() {
+          _selectedImages.clear();
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gửi tin nhắn thất bại: $e'), backgroundColor: Colors.red),
       );
-
-      await _controller.sendMessage(_conversationId, message, imageUrls: uploadedImageUrls);
+    } finally {
+        _isUploading = false;
     }
-
-    _messageController.clear();
-    setState(() {
-      _selectedImages.clear();
-    });
   }
+
 
   String _formatTimestamp(DateTime timestamp) {
     final now = DateTime.now();
@@ -136,7 +168,6 @@ class _ChatScreenState extends State<ChatScreen> {
           );
         }
       }
-
       setState(() {
         _selectedImages = validImages;
       });
@@ -181,8 +212,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 }
 
                 final messages = snapshot.data ?? [];
-
+                WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
                 return ListView.builder(
+                  controller: _scrollController,
                   reverse: false,
                   padding: const EdgeInsets.all(8),
                   itemCount: messages.length + 1,
@@ -299,6 +331,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                         },
                                       ),
                                     ),
+                                  SizedBox(height: 8),
                                 ],
                                 if (msg.message.isNotEmpty)
                                   Container(
@@ -308,7 +341,9 @@ class _ChatScreenState extends State<ChatScreen> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Text(
-                                      msg.message,
+                                      msg.images.isNotEmpty
+                                          ? 'Tin nhắn ảnh: ${msg.message}'
+                                          : msg.message,
                                       style: TextStyle(
                                         color: isSender ? Colors.white : Colors.black87,
                                         fontSize: 16,
@@ -328,7 +363,8 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
           ),
-
+          if (_isUploading)
+            LinearProgressIndicator(minHeight: 4),
           // input giữ nguyên
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -382,7 +418,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 Row(
                   children: [
                     IconButton(
-                      onPressed: _pickImages,
+                      onPressed: _isUploading ? null : _pickImages,
                       icon: Icon(Icons.photo),
                       color: Colors.blue,
                       tooltip: 'Chọn ảnh',
@@ -390,24 +426,33 @@ class _ChatScreenState extends State<ChatScreen> {
                     Expanded(
                       child: TextField(
                         controller: _messageController,
+                        enabled: !_isUploading,
                         decoration: InputDecoration(
                           hintText: 'Nhập tin nhắn...',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(30),
                           ),
-                          contentPadding:
-                          const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                         ),
                       ),
                     ),
                     ElevatedButton(
-                      onPressed: _sendMessage,
+                      onPressed: _isUploading ? null : _sendMessage,
                       style: ElevatedButton.styleFrom(
                         shape: CircleBorder(),
                         padding: EdgeInsets.all(12),
                         backgroundColor: Colors.blue,
                       ),
-                      child: Icon(
+                      child: _isUploading
+                          ? SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                          : Icon(
                         _isEditing ? Icons.check : Icons.send,
                         size: 24,
                         color: Colors.white,
