@@ -111,6 +111,77 @@ class PostService {
     await batch.commit();
   }
 
+  Future<void> updatePost({
+    required String postId,
+    required String caption,
+    required List<String> hashtags,
+  }) async {
+    try {
+      final postDoc = await _firebaseService.firestore
+          .collection('posts')
+          .doc(postId)
+          .get();
+
+      if (!postDoc.exists) throw Exception('Bài viết không tồn tại');
+
+      final currentPost = PostModel.fromFirestore(postDoc);
+      final oldHashtags = currentPost.hashtags;
+
+      await _firebaseService.firestore
+          .collection('posts')
+          .doc(postId)
+          .update({
+        'caption': caption,
+        'hashtags': hashtags,
+      });
+
+      await _updateHashtagCountsForEdit(oldHashtags, hashtags);
+    } catch (e) {
+      debugPrint('Error updating post: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _updateHashtagCountsForEdit(
+      List<String> oldHashtags,
+      List<String> newHashtags
+      ) async {
+    final batch = _firebaseService.firestore.batch();
+
+    for (var tag in oldHashtags) {
+      if (!newHashtags.contains(tag)) {
+        final cleanTag = tag.startsWith('#') ? tag.substring(1) : tag;
+        final tagRef = _firebaseService.firestore.collection('hashtags').doc(cleanTag);
+
+        final snapshot = await tagRef.get();
+        if (snapshot.exists) {
+          final currentCount = snapshot.data()?['count'] ?? 0;
+          if (currentCount <= 1) {
+            batch.delete(tagRef);
+          } else {
+            batch.update(tagRef, {'count': FieldValue.increment(-1)});
+          }
+        }
+      }
+    }
+
+    for (var tag in newHashtags) {
+      if (!oldHashtags.contains(tag)) {
+        final cleanTag = tag.startsWith('#') ? tag.substring(1) : tag;
+        final tagRef = _firebaseService.firestore.collection('hashtags').doc(cleanTag);
+
+        final snapshot = await tagRef.get();
+        if (snapshot.exists) {
+          batch.update(tagRef, {'count': FieldValue.increment(1)});
+        } else {
+          batch.set(tagRef, {'count': 1});
+        }
+      }
+    }
+
+    await batch.commit();
+  }
+
   Future<bool> hasUserLikedPost({
     required String postId,
     required String userId,

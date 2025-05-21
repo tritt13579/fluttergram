@@ -118,6 +118,13 @@ class HomeController extends GetxController {
     }
   }
 
+  void updatePostInList(PostModel updatedPost) {
+    final index = posts.indexWhere((p) => p.id == updatedPost.id);
+    if (index != -1) {
+      posts[index] = updatedPost;
+    }
+  }
+
   Future<void> deletePost(String postId) async {
     try {
       Get.dialog(

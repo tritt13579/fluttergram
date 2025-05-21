@@ -5,6 +5,8 @@ import '../controllers/home_controller.dart';
 import '../models/post_model.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
+import '../screens/home/edit_post_screen.dart';
+
 class PostItem extends StatelessWidget {
   final PostModel post;
   final bool isLiked;
@@ -74,6 +76,15 @@ class PostItem extends StatelessWidget {
             children: [
               if (isOwner)
                 ListTile(
+                  leading: const Icon(Icons.edit, color: Colors.white),
+                  title: const Text('Chỉnh sửa bài viết', style: TextStyle(color: Colors.white)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _editPost(context);
+                  },
+                ),
+              if (isOwner)
+                ListTile(
                   leading: const Icon(Icons.delete, color: Colors.white),
                   title: const Text('Xóa bài viết', style: TextStyle(color: Colors.white)),
                   onTap: () {
@@ -86,7 +97,6 @@ class PostItem extends StatelessWidget {
                 title: const Text('Chia sẻ', style: TextStyle(color: Colors.white)),
                 onTap: () {
                   Navigator.pop(context);
-                  // Implement share functionality
                 },
               ),
               ListTile(
@@ -99,6 +109,10 @@ class PostItem extends StatelessWidget {
         );
       },
     );
+  }
+
+  void _editPost(BuildContext context) {
+    Get.to(() => EditPostScreen(post: post));
   }
 
   void _confirmDeletePost(BuildContext context) {
