@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttergram/controllers/story_controller.dart';
 import 'package:fluttergram/screens/auth/login_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fluttergram/screens/create_post/create_post.dart';
@@ -23,6 +24,7 @@ void main() async {
   timeago.setLocaleMessages('vi', timeago.ViMessages());
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   Get.put(FirebaseService());
+  Get.put(StoryController());
   SearchBinding().dependencies();
   runApp(const MyApp());
 }
