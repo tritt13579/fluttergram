@@ -112,14 +112,16 @@ class _ChatScreenState extends State<ChatScreen> {
 
   String _formatTimestamp(DateTime timestamp) {
     final now = DateTime.now();
-    final difference = now.difference(timestamp);
+    final today = DateTime(now.year, now.month, now.day);
+    final messageDate = DateTime(timestamp.year, timestamp.month, timestamp.day);
+    final difference = today.difference(messageDate).inDays;
 
-    if (difference.inDays == 0) {
+    if (difference == 0) {
       return '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
-    } else if (difference.inDays == 1) {
+    } else if (difference == 1) {
       return 'Hôm qua';
-    } else if (difference.inDays < 7) {
-      return '${_weekdayToVietnamese(timestamp.weekday)}';
+    } else if (difference < 7) {
+      return _weekdayToVietnamese(timestamp.weekday);
     } else {
       return '${timestamp.day.toString().padLeft(2, '0')}/${timestamp.month.toString().padLeft(2, '0')}/${timestamp.year}';
     }
@@ -253,7 +255,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             width: MediaQuery.of(context).size.width * 0.7,
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: Colors.blue.shade400,
+                              color: Colors.red.shade400,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: Colors.black, width: 2),
                             ),
@@ -337,7 +339,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                     decoration: BoxDecoration(
-                                      color: isSender ? Colors.blueAccent : Colors.grey.shade300,
+                                      color: isSender ? Colors.redAccent : Colors.grey.shade300,
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Text(
@@ -420,7 +422,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     IconButton(
                       onPressed: _isUploading ? null : _pickImages,
                       icon: Icon(Icons.photo),
-                      color: Colors.blue,
+                      color: Colors.red,
                       tooltip: 'Chọn ảnh',
                     ),
                     Expanded(
@@ -441,7 +443,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       style: ElevatedButton.styleFrom(
                         shape: CircleBorder(),
                         padding: EdgeInsets.all(12),
-                        backgroundColor: Colors.blue,
+                        backgroundColor: Colors.red,
                       ),
                       child: _isUploading
                           ? SizedBox(
