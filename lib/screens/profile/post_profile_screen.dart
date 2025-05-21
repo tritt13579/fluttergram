@@ -30,9 +30,8 @@ class _PostProfileScreenState extends State<PostProfileScreen> {
 
     _scrollController = ScrollController();
 
-    // Sau khi frame build xong, scroll đến vị trí bài viết ban đầu
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      double position = widget.initialIndex * 400.0; // 400 là approx height của 1 bài, bạn chỉnh cho phù hợp
+      double position = widget.initialIndex * 400.0;
       _scrollController.jumpTo(position);
     });
   }
