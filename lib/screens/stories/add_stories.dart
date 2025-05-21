@@ -36,6 +36,8 @@ class AddStoryScreen extends StatelessWidget {
                   'userId': userId,
                   'imageUrl': url,
                   'createdAt': FieldValue.serverTimestamp(),
+                  'username': username,
+                  'userAvatar': avatarUrl,
                 },
               );
 
@@ -65,3 +67,4 @@ class AddStoryScreen extends StatelessWidget {
     );
   }
 }
+
