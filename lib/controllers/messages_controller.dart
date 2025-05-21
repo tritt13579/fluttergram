@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../services/firebase_service.dart';
@@ -18,8 +19,22 @@ class MessagesController extends GetxController {
 
   User? get currentUser => _auth.currentUser;
   String? get userId => currentUser?.uid;
-  String get currentUserId => userId ?? '';
-  String get currentUsername => currentUser?.displayName ?? '';
+  String currentUserId = '';
+  String currentUsername = '';
+
+  @override
+  void onInit() {
+    super.onInit();
+    currentUserId = _auth.currentUser?.uid ?? '';
+    if (currentUserId.isNotEmpty) {
+      _firestore.collection('users').doc(currentUserId).snapshots().listen((doc) {
+        if (doc.exists) {
+          currentUsername = doc.data()?['username'] ?? '';
+          update();
+        }
+      });
+    }
+  }
 
   Stream<List<MessageModel>> getMessagesStream(String conversationId) {
     return _firestore
@@ -329,5 +344,13 @@ class MessagesController extends GetxController {
     }
 
     return imageUrls;
+  }
+
+  final TextEditingController searchController = TextEditingController();
+  String searchKeyword = '';
+
+  void updateSearchKeyword(String keyword) {
+    searchKeyword = keyword.toLowerCase();
+    update();  // trigger GetBuilder rebuild
   }
 }
