@@ -376,10 +376,9 @@ class HomeController extends GetxController {
 
     if (userId == currentUserId) {
       final BottomNavController navController = Get.find();
-      navController.changeTab(4); // tab ProfileScreen
+      navController.changeTab(4);
 
     } else {
-      // Nếu là tài khoản người khác
       Get.to(() => UserProfileScreen(userId: userId));
     }
   }

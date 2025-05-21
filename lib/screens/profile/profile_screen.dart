@@ -139,7 +139,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(username, style: const TextStyle(color: Colors.grey)),
+                    Text('@' + username, style: const TextStyle(color: Colors.grey)),
                     const SizedBox(height: 4),
                     Text(bio, style: const TextStyle(color: Colors.white)),
                   ],

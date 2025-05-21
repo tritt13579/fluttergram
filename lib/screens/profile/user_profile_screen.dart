@@ -48,7 +48,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       if (data != null) {
         final posts = await _postService.getUserPosts(widget.userId);
 
-        // Định dạng ngày tham gia
         final Timestamp? createdAtTimestamp = data['created_at'];
         if (createdAtTimestamp != null) {
           final createdAt = createdAtTimestamp.toDate();
@@ -130,7 +129,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(username, style: const TextStyle(color: Colors.grey)),
+                    Text('@' + username, style: const TextStyle(color: Colors.grey)),
                     const SizedBox(height: 4),
                     Text(bio, style: const TextStyle(color: Colors.white)),
                   ],
