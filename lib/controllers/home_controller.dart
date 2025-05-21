@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 
@@ -7,7 +8,10 @@ import '../../services/firebase_service.dart';
 import '../../services/post_service.dart';
 import '../models/comment_model.dart';
 import '../models/user_model.dart';
+import '../screens/profile/profile_screen.dart';
+import '../screens/profile/user_profile_screen.dart';
 import '../widgets/comment_bottom_sheet.dart';
+import 'bottom_nav_controller.dart';
 
 class HomeController extends GetxController {
   final FirebaseService firebaseService = FirebaseService();
@@ -368,8 +372,16 @@ class HomeController extends GetxController {
   }
 
   void navigateToProfile(String userId) {
-    // Implement navigation with GetX
-    // Get.to(() => ProfileScreen(userId: userId));
-    debugPrint('Navigate to profile for user: $userId');
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+
+    if (userId == currentUserId) {
+      final BottomNavController navController = Get.find();
+      navController.changeTab(4); // tab ProfileScreen
+
+    } else {
+      // Nếu là tài khoản người khác
+      Get.to(() => UserProfileScreen(userId: userId));
+    }
   }
+
 }
