@@ -1,32 +1,34 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:fluttergram/screens/profile/post_profile_screen.dart';
-import '../../services/firebase_service.dart';
-import '../../controllers/auth_controller.dart';
+import 'package:get/get.dart';
+import 'package:get/get_core/src/get_main.dart';
+import '../../controllers/messages_controller.dart';
 import '../../models/post_model.dart';
+import '../../models/user_model.dart';
+import '../../services/firebase_service.dart';
 import '../../services/post_service.dart';
+import '../messages/chat_screen.dart';
 import 'edit_profile_screen.dart';
+import 'post_profile_screen.dart';
 
-class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+class UserProfileScreen extends StatefulWidget {
+  final String userId;
+
+  const UserProfileScreen({super.key, required this.userId});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  State<UserProfileScreen> createState() => _UserProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+class _UserProfileScreenState extends State<UserProfileScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final PostService _postService = PostService(FirebaseService());
 
   List<PostModel> userPosts = [];
-
   String username = '';
   String fullname = '';
   String bio = '';
   String avatarUrl = '';
-  String joinDate = '';
   bool isLoading = true;
   int postCount = 0;
 
@@ -36,18 +38,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadUserProfile();
   }
 
-  Future<void> _loadUserProfile() async {
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) return;
+  String joinDate = '';
 
+  Future<void> _loadUserProfile() async {
     try {
-      final doc = await _firestore.collection('users').doc(uid).get();
+      final doc = await _firestore.collection('users').doc(widget.userId).get();
       final data = doc.data();
 
       if (data != null) {
-        final posts = await _postService.getUserPosts(uid);
+        final posts = await _postService.getUserPosts(widget.userId);
 
-        // Lấy ngày tạo tài khoản
         final Timestamp? createdAtTimestamp = data['created_at'];
         if (createdAtTimestamp != null) {
           final createdAt = createdAtTimestamp.toDate();
@@ -65,10 +65,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Lỗi khi tải thông tin người dùng: $e');
+      debugPrint('Lỗi khi tải thông tin người dùng khác: $e');
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -81,32 +80,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Scaffold(
       backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: Text(username),
+        backgroundColor: Colors.black,
+      ),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Thông tin người dùng
+            // Avatar + số liệu
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 children: [
-                  Stack(
-                    children: [
-                      CircleAvatar(
-                        radius: 40,
-                        backgroundImage: avatarUrl.isNotEmpty
-                            ? NetworkImage(avatarUrl)
-                            : const AssetImage('assets/avatar.png') as ImageProvider,
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: CircleAvatar(
-                          radius: 12,
-                          backgroundColor: Colors.blue,
-                          child: const Icon(Icons.add, color: Colors.white, size: 18),
-                        ),
-                      ),
-                    ],
+                  CircleAvatar(
+                    radius: 40,
+                    backgroundImage: avatarUrl.isNotEmpty
+                        ? NetworkImage(avatarUrl)
+                        : const AssetImage('assets/avatar.png') as ImageProvider,
                   ),
                   const SizedBox(width: 20),
                   Expanded(
@@ -147,9 +137,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
-            // Nút chỉnh sửa & đăng xuất
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
@@ -160,36 +149,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         side: const BorderSide(color: Colors.grey),
                         foregroundColor: Colors.white,
                       ),
-                      onPressed: () async {
-                        bool? result = await Navigator.push(
+                      onPressed: () {
+                        if (!Get.isRegistered<MessagesController>()) {
+                          Get.put(MessagesController());
+                        }
+                        final user = UserModel(
+                          uid: widget.userId,
+                          name: fullname,
+                          username: username,
+                          avatar: avatarUrl,
+                        );
+
+                        Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const EditProfileScreen(),
+                            builder: (context) => ChatScreen(user: user),
                           ),
                         );
-                        if (result == true) {
-                          _loadUserProfile();
-                        }
                       },
                       child: const Text(
-                        'Chỉnh sửa trang cá nhân',
-                        style: TextStyle(fontSize: 12.4),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.grey),
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: () {
-                        AuthService().signout(context: context);
-                      },
-                      child: const Text(
-                        'Đăng xuất',
-                        style: TextStyle(fontSize: 12.4),
+                        'Nhắn tin',
+                        style: TextStyle(fontSize: 14),
                       ),
                     ),
                   ),
@@ -198,8 +178,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
 
             const SizedBox(height: 16),
-
-            // Danh sách bài viết dạng lưới
+            // Danh sách bài viết
             Padding(
               padding: const EdgeInsets.all(2),
               child: GridView.builder(
@@ -228,7 +207,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => PostProfileScreen(posts: userPosts, initialIndex: index),
+                          builder: (_) => PostProfileScreen(
+                            posts: userPosts,
+                            initialIndex: index,
+                          ),
                         ),
                       );
                     },
@@ -240,8 +222,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         return Center(
                           child: CircularProgressIndicator(
                             value: loadingProgress.expectedTotalBytes != null
-                                ? loadingProgress.cumulativeBytesLoaded /
-                                loadingProgress.expectedTotalBytes!
+                                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
                                 : null,
                           ),
                         );

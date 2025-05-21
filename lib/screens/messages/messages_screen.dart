@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/messages_controller.dart';
 import '../../models/user_model.dart';
-import '../profile/profile_screen.dart';
+import '../profile/edit_profile_screen.dart';
 import 'chat_screen.dart';
 
 class MessagesScreen extends StatelessWidget {
@@ -18,13 +18,13 @@ class MessagesScreen extends StatelessWidget {
               ? controller.currentUsername
               : 'Tài khoản'),
           actions: [
-            IconButton(icon: const Icon(Icons.edit_square), onPressed: () {Get.to(() => const ProfileScreen());}),
+            IconButton(icon: const Icon(Icons.edit_square), onPressed: () {Get.to(() => const EditProfileScreen());}),
           ],
         ),
         body: SingleChildScrollView(
           child: Column(
             children: [
-              _buildSearchBar(),
+              _buildSearchBar(controller),
               _buildRecentMessages(controller, context),
               _buildSuggestions(controller, context),
             ],
@@ -34,10 +34,12 @@ class MessagesScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar(MessagesController controller) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: TextField(
+        controller: controller.searchController,
+        onChanged: (value) => controller.updateSearchKeyword(value),
         decoration: InputDecoration(
           hintText: 'Tìm kiếm',
           hintStyle: const TextStyle(color: Colors.white54),
@@ -66,9 +68,18 @@ class MessagesScreen extends StatelessWidget {
           return _buildEmptyMessage('Các đoạn tin nhắn sẽ hiển thị ở đây sau khi bạn gửi hoặc nhận tin nhắn.');
         }
 
+        // Lọc theo từ khóa tìm kiếm nếu có
+        final filteredData = controller.searchKeyword.isEmpty
+            ? data
+            : data.where((user) => user.username.toLowerCase().contains(controller.searchKeyword)).toList();
+
+        if (filteredData.isEmpty) {
+          return _buildEmptyMessage('Không tìm thấy tin nhắn phù hợp.');
+        }
+
         return _buildUserSection(
           title: 'Tin nhắn',
-          users: data,
+          users: filteredData,
           controller: controller,
           context: context,
           showMenu: true,
@@ -86,18 +97,29 @@ class MessagesScreen extends StatelessWidget {
         }
         final data = snapshot.data;
         if (data == null || data.isEmpty) {
-          return _buildEmptyMessage('Không có gợi ý nào.');
+          return const SizedBox.shrink();
+        }
+
+        // Lọc theo từ khóa tìm kiếm nếu có
+        final filteredSuggestions = controller.searchKeyword.isEmpty
+            ? data
+            : data.where((user) => user.username.toLowerCase().contains(controller.searchKeyword)).toList();
+
+        if (filteredSuggestions.isEmpty) {
+          return const SizedBox.shrink();
         }
 
         return _buildUserSection(
           title: 'Gợi ý',
-          users: data,
+          users: filteredSuggestions,
+          controller: controller,
           context: context,
           showMenu: false,
         );
       },
     );
   }
+
 
   Widget _buildEmptyMessage(String text) {
     return Padding(

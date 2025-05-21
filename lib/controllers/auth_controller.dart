@@ -56,8 +56,6 @@ class AuthService {
         'avatar_url': avatarUrl,
         'created_at': DateTime.now(),
         'post_count': 0,
-        'follower_count': 0,
-        'following_count': 0,
       };
 
       // Lưu dữ liệu vào Firestore

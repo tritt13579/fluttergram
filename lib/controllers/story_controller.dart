@@ -1,11 +1,13 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import '../services/firebase_service.dart';
 import '../models/story_model.dart';
 
 class StoryController extends GetxController {
   final FirebaseService _firebaseService = FirebaseService();
+  User? get currentUser => _firebaseService.currentUser;
 
   Future<Map<String, dynamic>> fetchCurrentUserInfo() async {
     final user = _firebaseService.currentUser;
@@ -21,6 +23,21 @@ class StoryController extends GetxController {
     };
   }
 
+  Future<StoryModel?> getUserStory(String userId) async {
+    final snapshot = await _firebaseService.firestore
+        .collection('stories')
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .limit(1)
+        .get();
+
+    if (snapshot.docs.isEmpty) return null;
+
+    final data = snapshot.docs.first;
+    final story = StoryModel.fromFirestore(data, null);
+    final isValid = DateTime.now().difference(story.createdAt).inHours < 24;
+    return isValid ? story : null;
+  }
 
   Future<void> deleteCurrentUserStory() async {
     final user = _firebaseService.currentUser;
