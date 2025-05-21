@@ -1,11 +1,10 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../services/firebase_service.dart';
-import '../screens/stories/helper_permission.dart';
+import '../../utils/app_permissions.dart';
 import 'story_circle.dart';
 
 class StoriesSection extends StatefulWidget {
@@ -16,29 +15,51 @@ class StoriesSection extends StatefulWidget {
 }
 
 class _StoriesSectionState extends State<StoriesSection> {
-  final currentUser = {
-    'avatar': 'https://i.pravatar.cc/150?img=1',
-    'username': 'mainuser',
-    'isCurrentUser': true,
-  };
-
-  late final List<Map<String, dynamic>> stories;
+  List<Map<String, dynamic>> stories = [];
 
   @override
   void initState() {
     super.initState();
-    stories = [
-      currentUser,
-      ...List.generate(10, (index) => {
-        'avatar': 'https://i.pravatar.cc/150?img=${index + 10}',
-        'username': 'user$index',
-        'isCurrentUser': false,
-      }),
-    ];
+    _loadStories();
+  }
+
+  Future<Map<String, dynamic>> _fetchCurrentUserInfo() async {
+    final userId = FirebaseService().userId;
+    final doc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+
+    if (doc.exists) {
+      final data = doc.data()!;
+      return {
+        'avatar': data['avatar_url'] ?? '',
+        'username': data['username'] ?? '',
+        'isCurrentUser': true,
+      };
+    } else {
+      throw Exception("Không tìm thấy người dùng");
+    }
+  }
+
+  Future<void> _loadStories() async {
+    try {
+      final currentUserInfo = await _fetchCurrentUserInfo();
+
+      setState(() {
+        stories = [
+          currentUserInfo,
+          ...List.generate(10, (index) => {
+            'avatar': 'https://i.pravatar.cc/150?img=${index + 10}',
+            'username': 'user$index',
+            'isCurrentUser': false,
+          }),
+        ];
+      });
+    } catch (e) {
+      debugPrint('Lỗi khi tải user: $e');
+    }
   }
 
   Future<void> _handleAddStory(BuildContext context) async {
-    final hasPermission = await requestPermission(Permission.photos);
+    final hasPermission = await AppPermissions.requestMediaPermissions();
     if (!hasPermission) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -93,6 +114,13 @@ class _StoriesSectionState extends State<StoriesSection> {
 
   @override
   Widget build(BuildContext context) {
+    if (stories.isEmpty) {
+      return const SizedBox(
+        height: 100,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: SizedBox(
@@ -110,7 +138,6 @@ class _StoriesSectionState extends State<StoriesSection> {
               avatarUrl: story['avatar'] as String,
               username: story['username'] as String,
               isCurrentUser: isCurrentUser,
-              onTap: isCurrentUser ? () => _handleAddStory(context) : null,
             );
           },
         ),

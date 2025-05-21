@@ -10,6 +10,8 @@ import 'package:fluttergram/screens/profile/profile_screen.dart';
 import 'package:fluttergram/screens/search/search_screen.dart';
 import 'package:get/get.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'services/firebase_service.dart';
+import 'bindings/search_binding.dart';
 import 'controllers/bottom_nav_controller.dart';
 import 'package:stylish_bottom_bar/stylish_bottom_bar.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -20,6 +22,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   timeago.setLocaleMessages('vi', timeago.ViMessages());
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  Get.put(FirebaseService());
+  SearchBinding().dependencies();
   runApp(const MyApp());
 }
 

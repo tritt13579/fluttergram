@@ -251,7 +251,7 @@ class PostService {
       final snapshot = await _firebaseService.firestore
           .collection('posts')
           .where('hashtags', arrayContains: cleanTag)
-          .orderBy('createdAt', descending: true)
+          // .orderBy('createdAt', descending: true)
           .get();
 
       return snapshot.docs

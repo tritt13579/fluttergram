@@ -1,23 +1,33 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:get/get.dart';
+import '../../screens/stories/add_stories.dart';
 
 class StoryCircle extends StatelessWidget {
   final String avatarUrl;
   final String username;
   final bool isCurrentUser;
-  final VoidCallback? onTap;
 
   const StoryCircle({
     super.key,
     required this.avatarUrl,
     required this.username,
     required this.isCurrentUser,
-    this.onTap,
   });
+
+  Future<void> _pickAndNavigate() async {
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (picked != null) {
+      final image = File(picked.path);
+      Get.to(() => AddStoryScreen(image: image, avatarUrl: avatarUrl, username: username));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: isCurrentUser ? _pickAndNavigate : null,
       child: Column(
         children: [
           Stack(
@@ -52,11 +62,7 @@ class StoryCircle extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          Text(
-            username,
-            style: const TextStyle(fontSize: 12),
-            overflow: TextOverflow.ellipsis,
-          ),
+          Text(username, style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis),
         ],
       ),
     );
