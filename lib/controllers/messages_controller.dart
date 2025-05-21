@@ -6,7 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:get/get.dart';
 
-import '../ services/firebase_service.dart';
+import '../services/firebase_service.dart';
 import '../models/message_model.dart';
 import '../models/user_model.dart';
 
