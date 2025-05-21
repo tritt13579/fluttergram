@@ -44,20 +44,37 @@ class PostItem extends StatelessWidget {
   }
 
   Widget _buildHeader() {
-    return ListTile(
-      onTap: onProfileTap,
-      leading: CircleAvatar(
-        backgroundImage: post.ownerPhotoUrl != null
-            ? NetworkImage(post.ownerPhotoUrl!)
-            : const AssetImage('assets/images/default_avatar.jpg') as ImageProvider,
-      ),
-      title: Text(
-        post.ownerUsername ?? 'Người dùng',
-        style: const TextStyle(fontWeight: FontWeight.bold),
-      ),
-      trailing: IconButton(
-        icon: const Icon(Icons.more_vert),
-        onPressed: () => _showPostOptions(Get.context!),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: onProfileTap,
+            child: CircleAvatar(
+              radius: 20,
+              backgroundImage: post.ownerPhotoUrl != null
+                  ? NetworkImage(post.ownerPhotoUrl!)
+                  : const AssetImage('assets/images/default_avatar.jpg') as ImageProvider,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: GestureDetector(
+              onTap: onProfileTap,
+              child: Text(
+                post.ownerUsername ?? 'Người dùng',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.more_vert),
+            onPressed: () => _showPostOptions(Get.context!),
+          ),
+        ],
       ),
     );
   }
