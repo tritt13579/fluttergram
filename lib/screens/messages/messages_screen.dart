@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/messages_controller.dart';
+import '../../models/user_model.dart';
+import '../profile/profile_screen.dart';
 import 'chat_screen.dart';
 
 class MessagesScreen extends StatelessWidget {
@@ -10,131 +12,168 @@ class MessagesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return GetBuilder<MessagesController>(
       init: Get.put(MessagesController()),
-      builder: (controller) {
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(controller.currentUsername.isNotEmpty
-                ? controller.currentUsername
-                : 'Tài khoản'),
-            actions: [
-              IconButton(
-                icon: Icon(Icons.edit_square),
-                onPressed: () {
-                },
-              ),
+      builder: (controller) => Scaffold(
+        appBar: AppBar(
+          title: Text(controller.currentUsername.isNotEmpty
+              ? controller.currentUsername
+              : 'Tài khoản'),
+          actions: [
+            IconButton(icon: const Icon(Icons.edit_square), onPressed: () {Get.to(() => const ProfileScreen());}),
+          ],
+        ),
+        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              _buildSearchBar(),
+              _buildRecentMessages(controller, context),
+              _buildSuggestions(controller, context),
             ],
           ),
-          body: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Tìm kiếm',
-                      hintStyle: TextStyle(color: Colors.white54),
-                      filled: true,
-                      fillColor: Colors.grey.shade800,
-                      prefixIcon: Icon(Icons.search, color: Colors.white54),
-                      contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                ),
-                if (controller.recentMessages.isNotEmpty) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: Text('Tin nhắn', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  ),
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: NeverScrollableScrollPhysics(),
-                    itemCount: controller.recentMessages.length,
-                    itemBuilder: (context, index) {
-                      final user = controller.recentMessages[index];
-                      return ListTile(
-                        leading: CircleAvatar(
-                          backgroundImage: NetworkImage(user.avatar),
-                          radius: 24,
-                        ),
-                        title: Text(user.name),
-                        subtitle: Text(
-                          user.lastMessage != null
-                              ? (user.lastSenderUid == controller.currentUserId
-                              ? 'Bạn: ${user.lastMessage}'
-                              : '${user.name}: ${user.lastMessage}')
-                              : 'Nhấn vào để chat',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ChatScreen(user: user),
-                            ),
-                          );
-                        },
-                        trailing: IconButton(
-                          icon: Icon(Icons.delete),
-                          onPressed: () async {
-                            await controller.deleteConversationAndMessages(user.uid);
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                ] else ...[
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Text(
-                      'Các đoạn tin nhắn sẽ hiển thị ở đây sau khi bạn gửi hoặc nhận.',
-                      style: TextStyle(color: Colors.white54),
-                    ),
-                  ),
-                ],
-                // Gợi ý
-                if (controller.recommended.isNotEmpty) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Text('Gợi ý', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  ),
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: NeverScrollableScrollPhysics(),
-                    itemCount: controller.recommended.length,
-                    itemBuilder: (context, index) {
-                      final user = controller.recommended[index];
-                      return ListTile(
-                        leading: CircleAvatar(
-                          backgroundImage: NetworkImage(user.avatar),
-                          radius: 24,
-                        ),
-                        title: Text(user.name),
-                        subtitle: Text(user.username),
-                        onTap: () {
-                          controller.addToRecentMessages(user);
-                          controller.removeFromRecommended(user);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ChatScreen(user: user),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ],
-              ],
-            ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: TextField(
+        decoration: InputDecoration(
+          hintText: 'Tìm kiếm',
+          hintStyle: const TextStyle(color: Colors.white54),
+          filled: true,
+          fillColor: Colors.grey.shade800,
+          prefixIcon: const Icon(Icons.search, color: Colors.white54),
+          contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecentMessages(MessagesController controller, BuildContext context) {
+    return StreamBuilder<List<UserModel>>(
+      stream: controller.getRecentConversationsStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final data = snapshot.data;
+        if (data == null || data.isEmpty) {
+          return _buildEmptyMessage('Các đoạn tin nhắn sẽ hiển thị ở đây sau khi bạn gửi hoặc nhận tin nhắn.');
+        }
+
+        return _buildUserSection(
+          title: 'Tin nhắn',
+          users: data,
+          controller: controller,
+          context: context,
+          showMenu: true,
         );
       },
+    );
+  }
+
+  Widget _buildSuggestions(MessagesController controller, BuildContext context) {
+    return StreamBuilder<List<UserModel>>(
+      stream: controller.getSuggestionsStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final data = snapshot.data;
+        if (data == null || data.isEmpty) {
+          return _buildEmptyMessage('Không có gợi ý nào.');
+        }
+
+        return _buildUserSection(
+          title: 'Gợi ý',
+          users: data,
+          context: context,
+          showMenu: false,
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyMessage(String text) {
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Text(text, style: const TextStyle(color: Colors.white54)),
+    );
+  }
+
+  Widget _buildUserSection({
+    required String title,
+    required List<UserModel> users,
+    required BuildContext context,
+    MessagesController? controller,
+    bool showMenu = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ...users.map((user) => ListTile(
+            leading: CircleAvatar(
+              backgroundImage: NetworkImage(user.avatar),
+              radius: 24,
+            ),
+            title: Text(user.name),
+            subtitle: Text(
+              showMenu
+                  ? (user.lastMessage != null && user.lastMessage!.trim().isNotEmpty
+                  ? (user.lastSenderUid == controller!.currentUserId
+                  ? 'Bạn: ${user.lastMessage}'
+                  : '${user.name}: ${user.lastMessage}')
+                  : 'Nhấn vào để chat')
+                  : user.username,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ChatScreen(user: user)),
+              );
+            },
+            trailing: showMenu
+                ? PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              onSelected: (value) async {
+                if (value == 'delete') {
+                  bool? confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: const Text('Xác nhận'),
+                      content: const Text(
+                          'Bạn có chắc chắn muốn xóa kênh tin nhắn này? (các tin nhắn sẽ bị xóa toàn bộ)'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Hủy')),
+                        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Xóa')),
+                      ],
+                    ),
+                  );
+                  if (confirm == true) {
+                    await controller!.deleteConversationAndMessages(user.uid);
+                    Get.snackbar('Thông báo', 'Đã xóa tin nhắn.');
+                  }
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'delete', child: Text('Xóa tin nhắn')),
+                PopupMenuItem(value: 'hide', child: Text('Ẩn tin nhắn')),
+              ],
+            )
+                : null,
+          )),
+        ],
+      ),
     );
   }
 }

@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:photo_manager/photo_manager.dart';
 
-import '../../controllers/edit_post_controller.dart';
+import '../../controllers/post_editor_controller.dart';
 
-class EditPostScreen extends StatelessWidget {
+class PostEditorScreen extends StatelessWidget {
   final List<AssetEntity> selectedAssets;
 
-  const EditPostScreen({super.key, required this.selectedAssets});
+  const PostEditorScreen({super.key, required this.selectedAssets});
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(EditPostController(selectedAssets: selectedAssets));
+    final controller = Get.put(PostEditorController(selectedAssets: selectedAssets));
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -122,7 +122,7 @@ class EditPostScreen extends StatelessWidget {
       IconData icon,
       String label,
       int index,
-      EditPostController controller,
+      PostEditorController controller,
       BuildContext context,
       ) {
     return InkWell(
