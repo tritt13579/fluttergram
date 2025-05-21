@@ -291,17 +291,28 @@ class PostService {
 
   Future<List<PostModel>> getUserPosts(String userId) async {
     try {
-      final snapshot = await _firebaseService.firestore
+      final query = _firebaseService.firestore
           .collection('posts')
           .where('ownerId', isEqualTo: userId)
-          .orderBy('createdAt', descending: true)
-          .get();
+          .orderBy('createdAt', descending: true);
 
-      return snapshot.docs
-          .map((doc) => PostModel.fromFirestore(doc))
-          .toList();
+      final snapshot = await query.get();
+
+      if (snapshot.docs.isEmpty) {
+        debugPrint('Không có bài viết nào.');
+        return [];
+      }
+
+      return snapshot.docs.map((doc) {
+        try {
+          return PostModel.fromFirestore(doc);
+        } catch (e) {
+          debugPrint('Lỗi khi ánh xạ post ${doc.id}: $e');
+          return null;
+        }
+      }).whereType<PostModel>().toList();
     } catch (e) {
-      debugPrint('Error getting user posts: $e');
+      debugPrint('Lỗi khi lấy bài viết người dùng: $e');
       return [];
     }
   }
@@ -312,7 +323,7 @@ class PostService {
       final snapshot = await _firebaseService.firestore
           .collection('posts')
           .where('hashtags', arrayContains: cleanTag)
-          .orderBy('createdAt', descending: true)
+          // .orderBy('createdAt', descending: true)
           .get();
 
       return snapshot.docs
