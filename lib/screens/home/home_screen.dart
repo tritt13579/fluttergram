@@ -60,7 +60,7 @@ class HomeScreen extends StatelessWidget {
         itemCount: controller.posts.length + 2,
         itemBuilder: (context, index) {
           if (index == 0) {
-            return const StoriesSection();
+            return StoriesSection();
           }
 
           if (index == controller.posts.length + 1) {

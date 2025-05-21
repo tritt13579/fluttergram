@@ -47,7 +47,6 @@ class StoriesScreen extends StatelessWidget {
               ],
             ),
             const Spacer(),
-            const Icon(Icons.pause, color: Colors.white),
             const SizedBox(width: 10),
             if (isCurrentUser)
               PopupMenuButton<String>(

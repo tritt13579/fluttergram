@@ -10,6 +10,7 @@ import '../../utils/app_permissions.dart';
 class StoryCircle extends StatelessWidget {
   final String avatarUrl;
   final String username;
+  final String? userId;
   final bool isCurrentUser;
   final bool hasActiveStory;
   final VoidCallback? onRefresh;
@@ -18,6 +19,7 @@ class StoryCircle extends StatelessWidget {
     super.key,
     required this.avatarUrl,
     required this.username,
+    this.userId,
     required this.isCurrentUser,
     required this.hasActiveStory,
     this.onRefresh,
@@ -60,8 +62,17 @@ class StoryCircle extends StatelessWidget {
           onRefresh?.call();
         }
       }
-    } else {
-      // Xử lý xem story của người khác nếu cần
+    } else if (userId != null) {
+      final story = await controller.getUserStory(userId!);
+      if (story != null) {
+        Get.to(() => StoriesScreen(
+          username: story.username,
+          avatarUrl: story.userAvatar,
+          imageUrl: story.imageUrl,
+          postedDateTime: story.createdAt,
+          isCurrentUser: false,
+        ));
+      }
     }
   }
 
@@ -77,7 +88,7 @@ class StoryCircle extends StatelessWidget {
                 decoration: hasActiveStory
                     ? BoxDecoration(
                   border: Border.all(
-                    color: Colors.pinkAccent,
+                    color: Colors.red[400]!,
                     width: 2,
                   ),
                   shape: BoxShape.circle,
