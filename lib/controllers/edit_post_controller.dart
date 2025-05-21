@@ -1,72 +1,220 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:photo_manager/photo_manager.dart';
-import 'package:pro_image_editor/pro_image_editor.dart';
-import 'dart:typed_data';
-import '../screens/create_post/final_post_screen.dart';
+
+import '../models/post_model.dart';
+import '../services/firebase_service.dart';
+import '../services/post_service.dart';
+import 'home_controller.dart';
 
 class EditPostController extends GetxController {
-  final List<AssetEntity> selectedAssets;
+  final PostModel post;
+  final TextEditingController captionController = TextEditingController();
+  final FocusNode captionFocusNode = FocusNode();
 
-  final RxList<Uint8List?> mediaList = <Uint8List?>[].obs;
-  final RxBool isLoading = true.obs;
-  final RxInt currentPage = 0.obs;
-  final PageController pageController = PageController();
+  final firebaseService = FirebaseService();
+  late final PostService postService;
+  final FirebaseAuth auth = FirebaseAuth.instance;
 
-  EditPostController({required this.selectedAssets});
+  final RxString caption = ''.obs;
+  final RxList<String> extractedHashtags = <String>[].obs;
+  final RxList<String> extractedTaggedUsers = <String>[].obs;
+
+  final RxBool showHashtagSuggestions = false.obs;
+  final RxBool showUserSuggestions = false.obs;
+  final RxString searchPrefix = ''.obs;
+  final RxList<String> filteredHashtags = <String>[].obs;
+  final RxList<String> filteredUsers = <String>[].obs;
+  final RxBool isLoading = false.obs;
+
+  String? get userId => auth.currentUser?.uid;
+
+  EditPostController({required this.post});
 
   @override
   void onInit() {
     super.onInit();
-    loadMediaData();
+    postService = PostService(firebaseService);
+
+    captionController.text = post.caption;
+    caption.value = post.caption;
+    _extractMentionsAndHashtags();
+
+    captionController.addListener(_handleCaptionChanges);
   }
 
-  Future<void> loadMediaData() async {
-    isLoading.value = true;
+  void _handleCaptionChanges() {
+    caption.value = captionController.text;
+    _extractMentionsAndHashtags();
+    _checkForSuggestions();
+  }
 
-    List<Uint8List?> tempList = [];
-    for (var asset in selectedAssets) {
-      final data = await asset.originBytes;
-      tempList.add(data);
+  void _extractMentionsAndHashtags() {
+    final RegExp hashtagRegExp = RegExp(r'#(\w+)');
+    extractedHashtags.value = hashtagRegExp
+        .allMatches(captionController.text)
+        .map((match) => match.group(1)!)
+        .toList();
+
+    final RegExp mentionRegExp = RegExp(r'@(\w+)');
+    extractedTaggedUsers.value = mentionRegExp
+        .allMatches(captionController.text)
+        .map((match) => match.group(1)!)
+        .toList();
+  }
+
+  Future<void> fetchUsersByPrefix(String prefix) async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .orderBy('username')
+          .startAt([prefix])
+          .endAt(['$prefix\uf8ff'])
+          .limit(10)
+          .get();
+
+      filteredUsers.value = snapshot.docs
+          .map((doc) => doc['username']?.toString() ?? '')
+          .where((username) => username.isNotEmpty)
+          .toList();
+    } catch (e) {
+      if (kDebugMode) {
+        print('Lỗi khi tìm user theo prefix: $e');
+      }
+      filteredUsers.clear();
     }
-
-    mediaList.value = tempList;
-    isLoading.value = false;
   }
 
-  void changePage(int index) {
-    currentPage.value = index;
+  Future<void> fetchHashtagsByPrefix(String prefix) async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('hashtags')
+          .orderBy(FieldPath.documentId)
+          .startAt([prefix])
+          .endAt(['$prefix\uf8ff'])
+          .limit(10)
+          .get();
+
+      filteredHashtags.value = snapshot.docs
+          .map((doc) => doc.id)
+          .where((tag) => tag.isNotEmpty)
+          .toList();
+    } catch (e) {
+      if (kDebugMode) {
+        print('Lỗi khi tìm hashtag theo prefix: $e');
+      }
+      filteredHashtags.clear();
+    }
   }
 
-  Future<void> openImageEditor(BuildContext context, int index) async {
-    if (mediaList[index] == null) return;
+  void _checkForSuggestions() {
+    showHashtagSuggestions.value = false;
+    showUserSuggestions.value = false;
+    searchPrefix.value = '';
 
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ProImageEditor.memory(
-          mediaList[index]!,
-          callbacks: ProImageEditorCallbacks(
-            onImageEditingComplete: (Uint8List editedBytes) async {
-              mediaList[index] = editedBytes;
-              mediaList.refresh();
-              Navigator.pop(context);
-            },
-          ),
-        ),
-      ),
+    String text = captionController.text;
+    int cursorPos = captionController.selection.end;
+
+    if (cursorPos <= 0 || cursorPos > text.length) return;
+
+    int startPos = cursorPos - 1;
+    while (startPos >= 0 && text[startPos] != ' ' && text[startPos] != '\n') {
+      startPos--;
+    }
+    startPos++;
+
+    if (startPos < cursorPos) {
+      String currentWord = text.substring(startPos, cursorPos);
+
+      if (currentWord.startsWith('#')) {
+        String searchTerm = currentWord.substring(1).toLowerCase();
+        searchPrefix.value = searchTerm;
+
+        fetchHashtagsByPrefix(searchTerm);
+        showHashtagSuggestions.value = true;
+      }
+      else if (currentWord.startsWith('@')) {
+        String searchTerm = currentWord.substring(1).toLowerCase();
+        searchPrefix.value = searchTerm;
+
+        fetchUsersByPrefix(searchTerm);
+        showUserSuggestions.value = true;
+      }
+    }
+  }
+
+  void insertSuggestion(String suggestion, {required bool isHashtag}) {
+    String text = captionController.text;
+    int cursorPos = captionController.selection.end;
+
+    int startPos = cursorPos - 1;
+    while (startPos >= 0 && text[startPos] != ' ' && text[startPos] != '\n') {
+      startPos--;
+    }
+    startPos++;
+
+    String prefix = isHashtag ? '#' : '@';
+    String newText = '${text.substring(0, startPos)}$prefix$suggestion ${text.substring(cursorPos)}';
+
+    captionController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: startPos + suggestion.length + 2),
     );
+
+    showHashtagSuggestions.value = false;
+    showUserSuggestions.value = false;
   }
 
-  void proceedToFinalScreen() {
-    if (mediaList.isNotEmpty) {
-      Get.to(() => FinalPostScreen(mediaList: mediaList.toList()));
+  Future<void> updatePost() async {
+    try {
+      isLoading.value = true;
+
+      final String captionText = captionController.text.trim();
+      final List<String> hashtags = extractedHashtags
+          .map((tag) => '#$tag')
+          .toList();
+
+      await postService.updatePost(
+        postId: post.id,
+        caption: captionText,
+        hashtags: hashtags,
+      );
+
+      final updatedPost = post.copyWith(
+        caption: captionText,
+        hashtags: hashtags,
+      );
+
+      if (Get.isRegistered<HomeController>()) {
+        Get.find<HomeController>().updatePostInList(updatedPost);
+      }
+
+      Get.back();
+      showSuccess('Bài viết đã được cập nhật');
+    } catch (e) {
+      showError('Không thể cập nhật bài viết: $e');
+    } finally {
+      isLoading.value = false;
     }
+  }
+
+  void showError(String message) {
+    Get.snackbar('Lỗi', message,
+        backgroundColor: Colors.red, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
+  }
+
+  void showSuccess(String message) {
+    Get.snackbar('Thành công', message,
+        backgroundColor: Colors.green, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
   }
 
   @override
   void onClose() {
-    pageController.dispose();
+    captionController.removeListener(_handleCaptionChanges);
+    captionController.dispose();
+    captionFocusNode.dispose();
     super.onClose();
   }
 }

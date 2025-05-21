@@ -35,7 +35,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
-        title: const Text('Edit Profile'),
+        title: const Text('Chỉnh sửa trang cá nhân'),
         titleTextStyle: const TextStyle(color: Colors.white, fontSize: 18),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -67,7 +67,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 controller: controller.nameController,
                 style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
-                  labelText: 'Full Name',
+                  labelText: 'Họ và tên',
                   labelStyle: TextStyle(color: Colors.grey),
                 ),
               ),
@@ -76,7 +76,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 controller: controller.userNameController,
                 style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
-                  labelText: 'Username',
+                  labelText: 'Tên người dùng',
                   labelStyle: TextStyle(color: Colors.grey),
                 ),
               ),
@@ -85,21 +85,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 controller: controller.bioController,
                 style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
-                  labelText: 'Bio',
+                  labelText: 'Tiểu sử',
                   labelStyle: TextStyle(color: Colors.grey),
                 ),
               ),
               const SizedBox(height: 32),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
+                  backgroundColor: Colors.red[400],
                   foregroundColor: Colors.black,
                 ),
 
                 onPressed: () {
                   controller.saveProfile(context);
                 },
-                child: const Text('Save'),
+                child: const Text(
+                  'Cập nhật', // Màu đỏ đỏ 400
+                ),
               ),
             ],
           ),

@@ -4,6 +4,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
+import '../models/comment_model.dart';
 import '../models/post_model.dart';
 import 'firebase_service.dart';
 
@@ -104,6 +105,77 @@ class PostService {
         batch.set(tagRef, {
           'count': 1,
         });
+      }
+    }
+
+    await batch.commit();
+  }
+
+  Future<void> updatePost({
+    required String postId,
+    required String caption,
+    required List<String> hashtags,
+  }) async {
+    try {
+      final postDoc = await _firebaseService.firestore
+          .collection('posts')
+          .doc(postId)
+          .get();
+
+      if (!postDoc.exists) throw Exception('Bài viết không tồn tại');
+
+      final currentPost = PostModel.fromFirestore(postDoc);
+      final oldHashtags = currentPost.hashtags;
+
+      await _firebaseService.firestore
+          .collection('posts')
+          .doc(postId)
+          .update({
+        'caption': caption,
+        'hashtags': hashtags,
+      });
+
+      await _updateHashtagCountsForEdit(oldHashtags, hashtags);
+    } catch (e) {
+      debugPrint('Error updating post: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _updateHashtagCountsForEdit(
+      List<String> oldHashtags,
+      List<String> newHashtags
+      ) async {
+    final batch = _firebaseService.firestore.batch();
+
+    for (var tag in oldHashtags) {
+      if (!newHashtags.contains(tag)) {
+        final cleanTag = tag.startsWith('#') ? tag.substring(1) : tag;
+        final tagRef = _firebaseService.firestore.collection('hashtags').doc(cleanTag);
+
+        final snapshot = await tagRef.get();
+        if (snapshot.exists) {
+          final currentCount = snapshot.data()?['count'] ?? 0;
+          if (currentCount <= 1) {
+            batch.delete(tagRef);
+          } else {
+            batch.update(tagRef, {'count': FieldValue.increment(-1)});
+          }
+        }
+      }
+    }
+
+    for (var tag in newHashtags) {
+      if (!oldHashtags.contains(tag)) {
+        final cleanTag = tag.startsWith('#') ? tag.substring(1) : tag;
+        final tagRef = _firebaseService.firestore.collection('hashtags').doc(cleanTag);
+
+        final snapshot = await tagRef.get();
+        if (snapshot.exists) {
+          batch.update(tagRef, {'count': FieldValue.increment(1)});
+        } else {
+          batch.set(tagRef, {'count': 1});
+        }
       }
     }
 
@@ -219,17 +291,28 @@ class PostService {
 
   Future<List<PostModel>> getUserPosts(String userId) async {
     try {
-      final snapshot = await _firebaseService.firestore
+      final query = _firebaseService.firestore
           .collection('posts')
           .where('ownerId', isEqualTo: userId)
-          .orderBy('createdAt', descending: true)
-          .get();
+          .orderBy('createdAt', descending: true);
 
-      return snapshot.docs
-          .map((doc) => PostModel.fromFirestore(doc))
-          .toList();
+      final snapshot = await query.get();
+
+      if (snapshot.docs.isEmpty) {
+        debugPrint('Không có bài viết nào.');
+        return [];
+      }
+
+      return snapshot.docs.map((doc) {
+        try {
+          return PostModel.fromFirestore(doc);
+        } catch (e) {
+          debugPrint('Lỗi khi ánh xạ post ${doc.id}: $e');
+          return null;
+        }
+      }).whereType<PostModel>().toList();
     } catch (e) {
-      debugPrint('Error getting user posts: $e');
+      debugPrint('Lỗi khi lấy bài viết người dùng: $e');
       return [];
     }
   }
@@ -403,5 +486,88 @@ class PostService {
         .doc(userId)
         .snapshots()
         .map((snapshot) => snapshot.exists);
+  }
+
+  Future<List<CommentModel>> getPostComments(
+      String postId, {
+        int limit = 20,
+        DocumentSnapshot? lastDocument,
+      }) async {
+    try {
+      Query query = _firebaseService.firestore
+          .collection('posts')
+          .doc(postId)
+          .collection('comments')
+          .orderBy('createdAt', descending: true)
+          .limit(limit);
+
+      if (lastDocument != null) {
+        query = query.startAfterDocument(lastDocument);
+      }
+
+      final snapshot = await query.get();
+
+      return snapshot.docs
+          .map((doc) => CommentModel.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      debugPrint('Error getting post comments: $e');
+      return [];
+    }
+  }
+
+  Future<String> addComment({
+    required String postId,
+    required String userId,
+    required String text,
+    String? username,
+    String? userAvatar,
+  }) async {
+    try {
+      final commentRef = _firebaseService.firestore
+          .collection('posts')
+          .doc(postId)
+          .collection('comments')
+          .doc();
+
+      final comment = CommentModel(
+        id: commentRef.id,
+        postId: postId,
+        userId: userId,
+        text: text,
+        createdAt: DateTime.now(),
+        username: username,
+        userAvatar: userAvatar,
+      );
+
+      final batch = _firebaseService.firestore.batch();
+
+      batch.set(commentRef, comment.toMap());
+      batch.update(
+        _firebaseService.firestore.collection('posts').doc(postId),
+        {'commentCount': FieldValue.increment(1)},
+      );
+
+      await batch.commit();
+      return commentRef.id;
+    } catch (e) {
+      debugPrint('Error adding comment: $e');
+      rethrow;
+    }
+  }
+
+  Stream<List<CommentModel>> commentsStream(String postId, {int limit = 20}) {
+    return _firebaseService.firestore
+        .collection('posts')
+        .doc(postId)
+        .collection('comments')
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => CommentModel.fromFirestore(doc))
+          .toList();
+    });
   }
 }
