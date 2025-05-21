@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -201,90 +202,5 @@ class FirebaseService {
         await saveDeviceToken(userId: userId!, token: token);
       }
     }
-  }
-
-  Stream<List<MessageModel>> getMessagesStream(String conversationId) {
-    return _firestore
-        .collection('conversations/$conversationId/messages')
-        .orderBy('createdAt')
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map((e) => MessageModel.fromMap(e.data())).toList());
-  }
-
-  Future<void> sendMessage(String conversationId, MessageModel message) async {
-    final conversationRef = _firestore.collection('conversations').doc(conversationId);
-    final messageData = {
-      'sender_uid': message.senderUid,
-      'sender_name': message.senderName,
-      'sender_avatar': message.senderAvatar,
-      'receiver_uid': message.receiverUid,
-      'message': message.message,
-      'createdAt': Timestamp.fromDate(message.timestamp),
-    };
-
-    final conversationData = {
-      'members': [message.senderUid, message.receiverUid],
-      'last_message': message.message,
-      'last_sender_uid': message.senderUid,
-      'timestamp': Timestamp.fromDate(message.timestamp),
-    };
-
-    final exists = (await conversationRef.get()).exists;
-    if (!exists) await conversationRef.set(conversationData);
-
-    await conversationRef.collection('messages').add(messageData);
-    await conversationRef.update(conversationData);
-  }
-
-  Future<void> deleteConversation(String currentUserId, String otherUserId) async {
-    final snapshot = await _firestore
-        .collection('conversations')
-        .where('members', arrayContains: currentUserId)
-        .get();
-
-    for (var doc in snapshot.docs) {
-      final members = List<String>.from(doc['members']);
-      if (members.contains(otherUserId)) {
-        final messages = await doc.reference.collection('messages').get();
-        for (var msg in messages.docs) {
-          await msg.reference.delete();
-        }
-        await doc.reference.delete();
-        break;
-      }
-    }
-  }
-
-
-  Stream<List<UserModel>> getUsersStream() {
-    return _firestore.collection('users').snapshots().map(
-            (snapshot) => snapshot.docs.map((e) => UserModel.fromMap(e.data())).toList());
-  }
-
-
-  Stream<List<UserModel>> getRecentConversations(String currentUserId) {
-    return _firestore
-        .collection('conversations')
-        .where('members', arrayContains: currentUserId)
-        .orderBy('timestamp', descending: true)
-        .snapshots()
-        .asyncMap((snapshot) async {
-      if (snapshot.docs.isEmpty) return [];
-
-      List<UserModel> users = [];
-      for (var doc in snapshot.docs) {
-        final members = List<String>.from(doc['members']);
-        final otherUserId = members.firstWhere((id) => id != currentUserId);
-
-        final userDoc = await _firestore.collection('users').doc(otherUserId).get();
-        if (userDoc.exists) {
-          final userData = userDoc.data()!;
-          userData['last_message'] = doc['last_message'];
-          userData['last_sender_uid'] = doc['last_sender_uid'];
-          users.add(UserModel.fromMap(userData));
-        }
-      }
-      return users;
-    });
   }
 }
