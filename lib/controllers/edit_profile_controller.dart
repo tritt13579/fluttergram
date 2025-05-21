@@ -44,7 +44,7 @@ class EditProfileController {
   }
 
   Future<String> _uploadAvatar(File image, String uid) async {
-    final ref = _storage.ref().child('avatars/$uid/img_{$uid}.jpg');
+    final ref = _storage.ref().child('avatars/$uid/img_$uid.jpg');
     await ref.putFile(image);
     return await ref.getDownloadURL();
   }
@@ -53,27 +53,52 @@ class EditProfileController {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return;
 
-    String? newAvatarUrl = avatarUrl;
-    if (avatarImage != null) {
-      newAvatarUrl = await _uploadAvatar(avatarImage!, uid);
-    }
-
-    await _firestore.collection('users').doc(uid).update({
-      'fullname': nameController.text.trim(),
-      'username': userNameController.text.trim(),
-      'bio': bioController.text.trim(),
-      'avatar_url': newAvatarUrl,
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('The information has been updated!'),
-        backgroundColor: Colors.green,
+    // Hiển thị loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
       ),
     );
 
-    Navigator.pop(context, true);
+    try {
+      String? newAvatarUrl = avatarUrl;
+      if (avatarImage != null) {
+        newAvatarUrl = await _uploadAvatar(avatarImage!, uid);
+      }
+
+      await _firestore.collection('users').doc(uid).update({
+        'fullname': nameController.text.trim(),
+        'username': userNameController.text.trim(),
+        'bio': bioController.text.trim(),
+        'avatar_url': newAvatarUrl,
+      });
+
+      // Tắt loading
+      Navigator.of(context).pop();
+      // Hiển thị thông báo thành công
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cập nhật thông tin thành công!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      Navigator.pop(context, true);
+    } catch (e) {
+      // Tắt loading nếu có lỗi
+      Navigator.of(context).pop();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Đã xảy ra lỗi: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
+
 
 
 

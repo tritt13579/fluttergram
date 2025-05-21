@@ -1,7 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttergram/screens/profile/post_profile_screen.dart';
+import '../../services/firebase_service.dart';
 import '../../controllers/auth_controller.dart';
+import '../../models/post_model.dart';
+import '../../services/post_service.dart';
 import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -11,16 +15,21 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-
 class _ProfileScreenState extends State<ProfileScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final PostService _postService = PostService(FirebaseService());
+
+  List<PostModel> userPosts = [];
 
   String username = '';
   String fullname = '';
   String bio = '';
   String avatarUrl = '';
   bool isLoading = true;
+  int postCount = 0;
+  int followerCount = 0;
+  int followingCount = 0;
 
   @override
   void initState() {
@@ -35,17 +44,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final doc = await _firestore.collection('users').doc(uid).get();
       final data = doc.data();
+
       if (data != null) {
+        final posts = await _postService.getUserPosts(uid);
+
         setState(() {
           username = data['username'] ?? '';
           fullname = data['fullname'] ?? '';
           bio = data['bio'] ?? '';
           avatarUrl = data['avatar_url'] ?? '';
+          postCount = data['post_count'] ?? posts.length;
+          followerCount = data['follower_count'] ?? 0;
+          followingCount = data['following_count'] ?? 0;
+          userPosts = posts;
           isLoading = false;
         });
       }
     } catch (e) {
-      debugPrint('Error loading user profile: $e');
+      debugPrint('Lỗi khi tải thông tin người dùng: $e');
     }
   }
 
@@ -63,7 +79,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Avatar
+            // Thông tin người dùng
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
@@ -74,8 +90,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         radius: 40,
                         backgroundImage: avatarUrl.isNotEmpty
                             ? NetworkImage(avatarUrl)
-                            : const AssetImage('assets/avatar.png')
-                        as ImageProvider,
+                            : const AssetImage('assets/avatar.png') as ImageProvider,
                       ),
                       Positioned(
                         bottom: 0,
@@ -92,10 +107,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Expanded(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: const [
-                        _StatItem(value: '0', label: 'Posts'),
-                        _StatItem(value: '0', label: 'Followers'),
-                        _StatItem(value: '0', label: 'Following'),
+                      children: [
+                        _StatItem(value: postCount.toString(), label: 'Bài viết'),
+                        _StatItem(value: followerCount.toString(), label: 'Người theo dõi'),
+                        _StatItem(value: followingCount.toString(), label: 'Đang theo dõi'),
                       ],
                     ),
                   ),
@@ -103,48 +118,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
 
-            // Họ tên
+            // Họ tên, username, bio
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Text(
-                  fullname,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-
-            // username
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  username,
-                  style: const TextStyle(color: Colors.grey),
-                ),
-              ),
-            ),
-
-            // Bio
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  bio,
-                  style: const TextStyle(color: Colors.white),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      fullname,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(username, style: const TextStyle(color: Colors.grey)),
+                    const SizedBox(height: 4),
+                    Text(bio, style: const TextStyle(color: Colors.white)),
+                  ],
                 ),
               ),
             ),
 
             const SizedBox(height: 12),
 
-            // Các nút
+            // Nút chỉnh sửa & đăng xuất
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
@@ -162,12 +163,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             builder: (context) => const EditProfileScreen(),
                           ),
                         );
-
                         if (result == true) {
                           _loadUserProfile();
                         }
                       },
-                      child: const Text('Edit Profile'),
+                      child: const Text('Chỉnh sửa trang cá nhân'),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -180,10 +180,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       onPressed: () {
                         AuthService().signout(context: context);
                       },
-                      child: const Text('Log Out'),
+                      child: const Text('Đăng xuất'),
                     ),
                   ),
                 ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Danh sách bài viết dạng lưới
+            Padding(
+              padding: const EdgeInsets.all(2),
+              child: GridView.builder(
+                physics: const NeverScrollableScrollPhysics(),
+                shrinkWrap: true,
+                itemCount: userPosts.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 2,
+                  mainAxisSpacing: 2,
+                  childAspectRatio: 1,
+                ),
+                  itemBuilder: (context, index) {
+                    final post = userPosts[index];
+                    final imageUrl = post.mediaUrls.isNotEmpty ? post.mediaUrls.first : null;
+
+                    if (imageUrl == null) {
+                      return Container(
+                        color: Colors.grey[800],
+                        child: const Icon(Icons.image, color: Colors.white),
+                      );
+                    }
+
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PostProfileScreen(posts: userPosts, initialIndex: index),
+                          ),
+                        );
+                      },
+                      child: Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                  loadingProgress.expectedTotalBytes!
+                                  : null,
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey[800],
+                            child: const Icon(Icons.broken_image, color: Colors.white),
+                          );
+                        },
+                      ),
+                    );
+                  }
+
               ),
             ),
           ],
