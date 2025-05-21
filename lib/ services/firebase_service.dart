@@ -4,8 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import '../models/message_model.dart';
-import '../models/user_model.dart';
 
 class FirebaseService {
   // Firebase instances
@@ -153,7 +151,6 @@ class FirebaseService {
           path: path,
           upsert: true
       );
-      // Adding timestamp query parameter to force refresh on UI
       return "$downloadUrl?ts=${DateTime.now().millisecondsSinceEpoch}";
     } catch (e) {
       rethrow;

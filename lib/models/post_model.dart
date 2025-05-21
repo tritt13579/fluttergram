@@ -72,20 +72,28 @@ class PostModel {
   }
 
   PostModel copyWith({
+    String? id,
+    String? ownerId,
+    String? ownerUsername,
+    String? ownerPhotoUrl,
+    String? caption,
+    List<String>? mediaUrls,
+    List<String>? hashtags,
     int? likeCount,
     int? commentCount,
+    DateTime? createdAt,
   }) {
     return PostModel(
-      id: id,
-      ownerId: ownerId,
-      ownerUsername: ownerUsername,
-      ownerPhotoUrl: ownerPhotoUrl,
-      caption: caption,
-      mediaUrls: mediaUrls,
-      hashtags: hashtags,
+      id: id ?? this.id,
+      ownerId: ownerId ?? this.ownerId,
+      ownerUsername: ownerUsername ?? this.ownerUsername,
+      ownerPhotoUrl: ownerPhotoUrl ?? this.ownerPhotoUrl,
+      caption: caption ?? this.caption,
+      mediaUrls: mediaUrls ?? this.mediaUrls,
+      hashtags: hashtags ?? this.hashtags,
       likeCount: likeCount ?? this.likeCount,
       commentCount: commentCount ?? this.commentCount,
-      createdAt: createdAt,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 }
