@@ -23,6 +23,20 @@ class StoryController extends GetxController {
     };
   }
 
+  Future<List<StoryModel>> getAllCurrentUserStories() async {
+    final user = _firebaseService.currentUser;
+    if (user == null) return [];
+    final snapshot = await _firebaseService.firestore
+        .collection('stories')
+        .where('userId', isEqualTo: user.uid)
+        .orderBy('createdAt', descending: true)
+        .get();
+    return snapshot.docs
+        .map((doc) => StoryModel.fromFirestore(doc, null))
+        .where((story) => DateTime.now().difference(story.createdAt).inHours < 24)
+        .toList();
+  }
+
   Future<StoryModel?> getUserStory(String userId) async {
     final snapshot = await _firebaseService.firestore
         .collection('stories')
@@ -37,22 +51,6 @@ class StoryController extends GetxController {
     final story = StoryModel.fromFirestore(data, null);
     final isValid = DateTime.now().difference(story.createdAt).inHours < 24;
     return isValid ? story : null;
-  }
-
-  Future<void> deleteCurrentUserStory() async {
-    final user = _firebaseService.currentUser;
-    if (user == null) return;
-
-    final snapshot = await _firebaseService.firestore
-        .collection('stories')
-        .where('userId', isEqualTo: user.uid)
-        .orderBy('createdAt', descending: true)
-        .limit(1)
-        .get();
-
-    if (snapshot.docs.isNotEmpty) {
-      await snapshot.docs.first.reference.delete();
-    }
   }
 
   Future<bool> hasActiveStory() async {
@@ -122,6 +120,18 @@ class StoryController extends GetxController {
   }
   Future<QuerySnapshot<Map<String, dynamic>>> fetchAllUsers() async {
     return await _firebaseService.firestore.collection('users').get();
+  }
+
+  Future<List<StoryModel>> getAllCurrentUserStoriesForUser(String userId) async {
+    final snapshot = await _firebaseService.firestore
+        .collection('stories')
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .get();
+    return snapshot.docs
+        .map((doc) => StoryModel.fromFirestore(doc, null))
+        .where((story) => DateTime.now().difference(story.createdAt).inHours < 24)
+        .toList();
   }
 
   Future<bool> hasStoryForUser(String userId) async {

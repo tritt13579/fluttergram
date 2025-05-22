@@ -1,7 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:fluttergram/controllers/story_controller.dart';
 import 'package:fluttergram/screens/auth/login_screen.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fluttergram/screens/create_post/create_post.dart';
 import 'package:fluttergram/screens/home/home_screen.dart';
@@ -12,7 +12,6 @@ import 'package:fluttergram/screens/search/search_screen.dart';
 import 'package:get/get.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'services/firebase_service.dart';
-import 'bindings/search_binding.dart';
 import 'controllers/bottom_nav_controller.dart';
 import 'package:stylish_bottom_bar/stylish_bottom_bar.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -23,9 +22,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   timeago.setLocaleMessages('vi', timeago.ViMessages());
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await GetStorage.init();
   Get.put(FirebaseService());
-  Get.put(StoryController());
-  SearchBinding().dependencies();
   runApp(const MyApp());
 }
 

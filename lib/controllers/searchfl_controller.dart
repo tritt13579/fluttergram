@@ -9,7 +9,7 @@ import '../services/firebase_service.dart';
 enum SearchMode { initial, users, hashtagSuggestions, hashtagPosts }
 
 class SearchFlutterController extends GetxController {
-  final PostService _postService = Get.find<PostService>();
+  late final PostService _postService;
 
   final TextEditingController textEditingController = TextEditingController();
   final RxString searchQuery = ''.obs;
@@ -25,6 +25,10 @@ class SearchFlutterController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    if (!Get.isRegistered<PostService>()) {
+      Get.lazyPut<PostService>(() => PostService(Get.find<FirebaseService>()));
+    }
+    _postService = Get.find<PostService>();
     textEditingController.addListener(_onSearchChanged);
   }
 
@@ -47,6 +51,14 @@ class SearchFlutterController extends GetxController {
     });
   }
 
+  Future<QuerySnapshot<Map<String, dynamic>>> fetchUsers() {
+    return FirebaseFirestore.instance
+        .collection('users')
+        .where('username', isGreaterThanOrEqualTo: searchQuery.value)
+        .where('username', isLessThanOrEqualTo: '${searchQuery.value}\uf8ff')
+        .get();
+  }
+
   Future<void> _fetchHashtagSuggestions(String query) async {
     if (query.length <= 1) {
       hashtagSuggestions.clear();
@@ -60,8 +72,10 @@ class SearchFlutterController extends GetxController {
   }
 
   Future<void> onHashtagSubmitted(String hashtag) async {
+    textEditingController.removeListener(_onSearchChanged);
     textEditingController.text = hashtag;
     searchQuery.value = hashtag;
+    textEditingController.addListener(_onSearchChanged);
 
     isLoading.value = true;
     hashtagPostsResults.clear();
@@ -73,21 +87,12 @@ class SearchFlutterController extends GetxController {
     isLoading.value = false;
   }
 
-
-
   Future<void> onUserSearchSubmitted(String query) async {
     if (query.isEmpty || query.startsWith('#')) return;
     searchMode.value = SearchMode.users;
   }
 
 
-  Future<QuerySnapshot<Map<String, dynamic>>> fetchUsers() {
-    return FirebaseFirestore.instance
-        .collection('users')
-        .where('username', isGreaterThanOrEqualTo: searchQuery.value)
-        .where('username', isLessThanOrEqualTo: '${searchQuery.value}\uf8ff')
-        .get();
-  }
 
   @override
   void onClose() {
