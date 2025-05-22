@@ -9,16 +9,16 @@ import '../models/post_model.dart';
 import 'firebase_service.dart';
 
 class PostService {
-  final FirebaseService _firebaseService;
+  final FirebaseService firebaseService;
   final Uuid _uuid = const Uuid();
 
-  PostService(this._firebaseService);
+  PostService(this.firebaseService);
 
   Future<String> _uploadMedia(Uint8List media, String userId) async {
     final String fileName = '${_uuid.v4()}.jpg';
     final String filePath = 'posts/$userId/$fileName';
 
-    final ref = _firebaseService.storage.ref().child(filePath);
+    final ref = firebaseService.storage.ref().child(filePath);
     final uploadTask = ref.putData(
       media,
       SettableMetadata(contentType: 'image/jpeg'),
@@ -64,7 +64,7 @@ class PostService {
   }) async {
     try {
       final List<String> postHashtags = hashtags ?? extractHashtags(caption);
-      final postRef = _firebaseService.firestore.collection('posts').doc();
+      final postRef = firebaseService.firestore.collection('posts').doc();
 
       final postModel = PostModel(
         id: postRef.id,
@@ -90,11 +90,11 @@ class PostService {
   }
 
   Future<void> _updateHashtagCounts(List<String> hashtags) async {
-    final batch = _firebaseService.firestore.batch();
+    final batch = firebaseService.firestore.batch();
 
     for (var tag in hashtags) {
       final cleanTag = tag.startsWith('#') ? tag.substring(1) : tag;
-      final tagRef = _firebaseService.firestore.collection('hashtags').doc(cleanTag);
+      final tagRef = firebaseService.firestore.collection('hashtags').doc(cleanTag);
 
       final snapshot = await tagRef.get();
       if (snapshot.exists) {
@@ -117,7 +117,7 @@ class PostService {
     required List<String> hashtags,
   }) async {
     try {
-      final postDoc = await _firebaseService.firestore
+      final postDoc = await firebaseService.firestore
           .collection('posts')
           .doc(postId)
           .get();
@@ -127,7 +127,7 @@ class PostService {
       final currentPost = PostModel.fromFirestore(postDoc);
       final oldHashtags = currentPost.hashtags;
 
-      await _firebaseService.firestore
+      await firebaseService.firestore
           .collection('posts')
           .doc(postId)
           .update({
@@ -146,12 +146,12 @@ class PostService {
       List<String> oldHashtags,
       List<String> newHashtags
       ) async {
-    final batch = _firebaseService.firestore.batch();
+    final batch = firebaseService.firestore.batch();
 
     for (var tag in oldHashtags) {
       if (!newHashtags.contains(tag)) {
         final cleanTag = tag.startsWith('#') ? tag.substring(1) : tag;
-        final tagRef = _firebaseService.firestore.collection('hashtags').doc(cleanTag);
+        final tagRef = firebaseService.firestore.collection('hashtags').doc(cleanTag);
 
         final snapshot = await tagRef.get();
         if (snapshot.exists) {
@@ -168,7 +168,7 @@ class PostService {
     for (var tag in newHashtags) {
       if (!oldHashtags.contains(tag)) {
         final cleanTag = tag.startsWith('#') ? tag.substring(1) : tag;
-        final tagRef = _firebaseService.firestore.collection('hashtags').doc(cleanTag);
+        final tagRef = firebaseService.firestore.collection('hashtags').doc(cleanTag);
 
         final snapshot = await tagRef.get();
         if (snapshot.exists) {
@@ -187,7 +187,7 @@ class PostService {
     required String userId,
   }) async {
     try {
-      final likeDoc = await _firebaseService.firestore
+      final likeDoc = await firebaseService.firestore
           .collection('posts')
           .doc(postId)
           .collection('likes')
@@ -206,13 +206,13 @@ class PostService {
     required String userId,
   }) async {
     try {
-      final postRef = _firebaseService.firestore.collection('posts').doc(postId);
+      final postRef = firebaseService.firestore.collection('posts').doc(postId);
       final likeRef = postRef.collection('likes').doc(userId);
 
       final likeDoc = await likeRef.get();
       final bool isLiked = likeDoc.exists;
 
-      final batch = _firebaseService.firestore.batch();
+      final batch = firebaseService.firestore.batch();
 
       if (isLiked) {
         batch.delete(likeRef);
@@ -242,7 +242,7 @@ class PostService {
     DocumentSnapshot? lastDocument,
   }) async {
     try {
-      Query query = _firebaseService.firestore
+      Query query = firebaseService.firestore
           .collection('posts')
           .doc(postId)
           .collection('likes')
@@ -269,7 +269,7 @@ class PostService {
     DocumentSnapshot? lastDocument,
   }) async {
     try {
-      Query query = _firebaseService.firestore
+      Query query = firebaseService.firestore
           .collection('posts')
           .orderBy('createdAt', descending: true)
           .limit(limit);
@@ -291,7 +291,7 @@ class PostService {
 
   Future<List<PostModel>> getUserPosts(String userId) async {
     try {
-      final query = _firebaseService.firestore
+      final query = firebaseService.firestore
           .collection('posts')
           .where('ownerId', isEqualTo: userId)
           .orderBy('createdAt', descending: true);
@@ -320,10 +320,10 @@ class PostService {
   Future<List<PostModel>> getPostsByHashtag(String hashtag) async {
     try {
       final cleanTag = hashtag.startsWith('#') ? hashtag : '#$hashtag';
-      final snapshot = await _firebaseService.firestore
+      final snapshot = await firebaseService.firestore
           .collection('posts')
           .where('hashtags', arrayContains: cleanTag)
-          // .orderBy('createdAt', descending: true)
+          .orderBy('createdAt', descending: true)
           .get();
 
       return snapshot.docs
@@ -337,7 +337,7 @@ class PostService {
 
   Future<List<String>> searchHashtags(String keyword) async {
     try {
-      final snapshot = await _firebaseService.firestore.collection('hashtags').get();
+      final snapshot = await firebaseService.firestore.collection('hashtags').get();
       final lowerKeyword = keyword.toLowerCase();
 
       final results = snapshot.docs
@@ -354,7 +354,7 @@ class PostService {
 
   Future<PostModel?> getPostById(String postId) async {
     try {
-      final snapshot = await _firebaseService.firestore
+      final snapshot = await firebaseService.firestore
           .collection('posts')
           .doc(postId)
           .get();
@@ -370,7 +370,7 @@ class PostService {
 
   Future<List<Map<String, dynamic>>> getPopularHashtags({int limit = 10}) async {
     try {
-      final snapshot = await _firebaseService.firestore
+      final snapshot = await firebaseService.firestore
           .collection('hashtags')
           .orderBy('count', descending: true)
           .limit(limit)
@@ -388,7 +388,7 @@ class PostService {
 
   Future<void> deletePost(String postId) async {
     try {
-      final postSnapshot = await _firebaseService.firestore
+      final postSnapshot = await firebaseService.firestore
           .collection('posts')
           .doc(postId)
           .get();
@@ -397,26 +397,26 @@ class PostService {
 
       final post = PostModel.fromFirestore(postSnapshot);
 
-      final likesSnapshot = await _firebaseService.firestore
+      final likesSnapshot = await firebaseService.firestore
           .collection('posts')
           .doc(postId)
           .collection('likes')
           .get();
 
-      final batch = _firebaseService.firestore.batch();
+      final batch = firebaseService.firestore.batch();
 
       for (var doc in likesSnapshot.docs) {
         batch.delete(doc.reference);
       }
 
-      batch.delete(_firebaseService.firestore.collection('posts').doc(postId));
+      batch.delete(firebaseService.firestore.collection('posts').doc(postId));
 
       await batch.commit();
       await _decrementHashtagCounts(post.hashtags);
 
       for (var mediaUrl in post.mediaUrls) {
         try {
-          final ref = _firebaseService.storage.refFromURL(mediaUrl);
+          final ref = firebaseService.storage.refFromURL(mediaUrl);
           await ref.delete();
         } catch (e) {
           debugPrint('Error deleting media file: $e');
@@ -429,11 +429,11 @@ class PostService {
   }
 
   Future<void> _decrementHashtagCounts(List<String> hashtags) async {
-    final batch = _firebaseService.firestore.batch();
+    final batch = firebaseService.firestore.batch();
 
     for (var tag in hashtags) {
       final cleanTag = tag.startsWith('#') ? tag.substring(1) : tag;
-      final tagRef = _firebaseService.firestore.collection('hashtags').doc(cleanTag);
+      final tagRef = firebaseService.firestore.collection('hashtags').doc(cleanTag);
 
       final snapshot = await tagRef.get();
       if (snapshot.exists) {
@@ -451,35 +451,11 @@ class PostService {
     await batch.commit();
   }
 
-  Stream<List<PostModel>> postsFeedStream({int limit = 10}) {
-    return _firebaseService.firestore
-        .collection('posts')
-        .orderBy('createdAt', descending: true)
-        .limit(limit)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => PostModel.fromFirestore(doc))
-          .toList();
-    });
-  }
-
-  Stream<PostModel?> postStream(String postId) {
-    return _firebaseService.firestore
-        .collection('posts')
-        .doc(postId)
-        .snapshots()
-        .map((snapshot) {
-      if (!snapshot.exists) return null;
-      return PostModel.fromFirestore(snapshot);
-    });
-  }
-
   Stream<bool> likeStatusStream({
     required String postId,
     required String userId,
   }) {
-    return _firebaseService.firestore
+    return firebaseService.firestore
         .collection('posts')
         .doc(postId)
         .collection('likes')
@@ -494,7 +470,7 @@ class PostService {
         DocumentSnapshot? lastDocument,
       }) async {
     try {
-      Query query = _firebaseService.firestore
+      Query query = firebaseService.firestore
           .collection('posts')
           .doc(postId)
           .collection('comments')
@@ -524,7 +500,7 @@ class PostService {
     String? userAvatar,
   }) async {
     try {
-      final commentRef = _firebaseService.firestore
+      final commentRef = firebaseService.firestore
           .collection('posts')
           .doc(postId)
           .collection('comments')
@@ -540,11 +516,11 @@ class PostService {
         userAvatar: userAvatar,
       );
 
-      final batch = _firebaseService.firestore.batch();
+      final batch = firebaseService.firestore.batch();
 
       batch.set(commentRef, comment.toMap());
       batch.update(
-        _firebaseService.firestore.collection('posts').doc(postId),
+        firebaseService.firestore.collection('posts').doc(postId),
         {'commentCount': FieldValue.increment(1)},
       );
 
@@ -554,20 +530,5 @@ class PostService {
       debugPrint('Error adding comment: $e');
       rethrow;
     }
-  }
-
-  Stream<List<CommentModel>> commentsStream(String postId, {int limit = 20}) {
-    return _firebaseService.firestore
-        .collection('posts')
-        .doc(postId)
-        .collection('comments')
-        .orderBy('createdAt', descending: true)
-        .limit(limit)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => CommentModel.fromFirestore(doc))
-          .toList();
-    });
   }
 }

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/searchfl_controller.dart';
 import '../../widgets/post_item.dart';
-import '../profile/profile_screen.dart';
 
 class SearchScreen extends StatelessWidget {
   const SearchScreen({super.key});

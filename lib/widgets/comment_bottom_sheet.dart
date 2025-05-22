@@ -218,7 +218,7 @@ class CommentBottomSheet extends StatelessWidget {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(20),
-                  borderSide: BorderSide(color: Colors.pinkAccent),
+                  borderSide: BorderSide(color: Colors.red[400]!),
                 ),
               ),
               style: const TextStyle(color: Colors.white),
@@ -232,7 +232,7 @@ class CommentBottomSheet extends StatelessWidget {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.pinkAccent,
+                color: Colors.red[400],
               ),
               child: const Icon(
                 Icons.send,

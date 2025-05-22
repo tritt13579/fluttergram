@@ -8,7 +8,6 @@ import '../../models/user_model.dart';
 import '../../services/firebase_service.dart';
 import '../../services/post_service.dart';
 import '../messages/chat_screen.dart';
-import 'edit_profile_screen.dart';
 import 'post_profile_screen.dart';
 
 class UserProfileScreen extends StatefulWidget {

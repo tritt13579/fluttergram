@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -76,7 +77,9 @@ class MessagesController extends GetxController {
       userPostCount = querySnapshot.docs.length;
       update(['user_post_count']);
     } catch (e) {
-      print('Lỗi đếm bài viết: $e');
+      if (kDebugMode) {
+        print('Lỗi đếm bài viết: $e');
+      }
       userPostCount = 0;
       update(['user_post_count']);
     }
@@ -136,7 +139,9 @@ class MessagesController extends GetxController {
           final ref = _storage.refFromURL(url);
           await ref.delete();
         } catch (e) {
-          print('Lỗi khi xóa ảnh: $e');
+          if (kDebugMode) {
+            print('Lỗi khi xóa ảnh: $e');
+          }
         }
       }
 
@@ -190,7 +195,9 @@ class MessagesController extends GetxController {
               final ref = _storage.refFromURL(url);
               await ref.delete();
             } catch (e) {
-              print('Lỗi khi xóa ảnh: $e');
+              if (kDebugMode) {
+                print('Lỗi khi xóa ảnh: $e');
+              }
             }
           }
 
