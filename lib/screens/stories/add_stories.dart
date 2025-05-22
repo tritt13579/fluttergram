@@ -3,17 +3,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../services/firebase_service.dart';
+import '../../models/user_model.dart';
 
 class AddStoryScreen extends StatelessWidget {
   final File image;
-  final String avatarUrl;
-  final String username;
+  final UserModel user;
 
   const AddStoryScreen({
     super.key,
     required this.image,
-    required this.avatarUrl,
-    required this.username,
+    required this.user,
   });
 
   @override
@@ -21,7 +20,7 @@ class AddStoryScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         leading: BackButton(),
-        title: const Text('Xem trước Story'),
+        title: const Text('Story'),
         actions: [
           IconButton(
             icon: const Icon(Icons.check),
@@ -36,8 +35,8 @@ class AddStoryScreen extends StatelessWidget {
                   'userId': userId,
                   'imageUrl': url,
                   'createdAt': FieldValue.serverTimestamp(),
-                  'username': username,
-                  'userAvatar': avatarUrl,
+                  'username': user.username,
+                  'userAvatar': user.avatar,
                 },
               );
 
@@ -49,22 +48,76 @@ class AddStoryScreen extends StatelessWidget {
       ),
       body: Stack(
         children: [
-          Center(child: Image.file(image, fit: BoxFit.cover, width: double.infinity)),
-          Positioned(
-            bottom: 20,
-            left: 16,
-            right: 16,
-            child: Row(
-              children: [
-                CircleAvatar(backgroundImage: NetworkImage(avatarUrl)),
-                const SizedBox(width: 8),
-                Text(username, style: const TextStyle(color: Colors.white, fontSize: 16)),
-              ],
+          Positioned.fill(
+            child: Image.file(
+              image,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
             ),
           ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              color: Colors.transparent,
+              padding: const EdgeInsets.all(10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    flex: 8,
+                    child: Container(
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[900]?.withOpacity(0.85),
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundImage: NetworkImage(user.avatar),
+                            radius: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Tin của bạn',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: Container(
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[900]?.withOpacity(0.85),
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.star,
+                          color: Colors.yellow,
+                          size: 28,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
         ],
       ),
     );
   }
 }
-

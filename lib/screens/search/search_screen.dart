@@ -5,12 +5,14 @@ import '../../controllers/searchfl_controller.dart';
 import '../../widgets/post_item.dart';
 import '../profile/profile_screen.dart';
 
-
-class SearchScreen extends GetView<SearchFlutterController> {
+class SearchScreen extends StatelessWidget {
   const SearchScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+
+    final SearchFlutterController controller = Get.put(SearchFlutterController());
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.black,
@@ -49,21 +51,21 @@ class SearchScreen extends GetView<SearchFlutterController> {
 
         switch (controller.searchMode.value) {
           case SearchMode.initial:
-            return _buildGridPlaceholder();
+            return _buildGridPlaceholder(controller);
           case SearchMode.users:
-            return _buildUserResults();
+            return _buildUserResults(controller);
           case SearchMode.hashtagSuggestions:
-            return _buildHashtagSuggestions();
+            return _buildHashtagSuggestions(controller);
           case SearchMode.hashtagPosts:
-            return _buildHashtagPosts();
+            return _buildHashtagPosts(controller);
         }
       }),
     );
   }
 
-  Widget _buildUserResults() {
+  Widget _buildUserResults(SearchFlutterController controller) {
     if (controller.searchQuery.value.isEmpty || controller.searchQuery.value.startsWith('#')) {
-      return _buildGridPlaceholder();
+      return _buildGridPlaceholder(controller);
     }
 
     return FutureBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -111,8 +113,7 @@ class SearchScreen extends GetView<SearchFlutterController> {
     );
   }
 
-
-  Widget _buildHashtagSuggestions() {
+  Widget _buildHashtagSuggestions(SearchFlutterController controller) {
     if (controller.isLoading.value && controller.hashtagSuggestions.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -122,7 +123,7 @@ class SearchScreen extends GetView<SearchFlutterController> {
               style: TextStyle(color: Colors.white)));
     }
     if (controller.hashtagSuggestions.isEmpty) {
-      return _buildGridPlaceholder();
+      return _buildGridPlaceholder(controller);
     }
 
     return ListView.builder(
@@ -140,7 +141,7 @@ class SearchScreen extends GetView<SearchFlutterController> {
     );
   }
 
-  Widget _buildHashtagPosts() {
+  Widget _buildHashtagPosts(SearchFlutterController controller) {
     if (controller.hashtagPostsResults.isEmpty) {
       return const Center(
         child: Text('Không có bài viết với hashtag này',
@@ -167,7 +168,7 @@ class SearchScreen extends GetView<SearchFlutterController> {
     );
   }
 
-  Widget _buildGridPlaceholder() {
+  Widget _buildGridPlaceholder(SearchFlutterController controller) {
     final List<String> imageUrls = List.generate(
       30,
           (index) => 'https://picsum.photos/seed/image$index/200/200',
