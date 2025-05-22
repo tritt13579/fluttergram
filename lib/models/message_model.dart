@@ -9,6 +9,7 @@ class MessageModel {
   final String message;
   final DateTime timestamp;
   final List<String> images;
+  final Map<String, String>? reactions;
 
   const MessageModel({
     required this.id,
@@ -19,6 +20,7 @@ class MessageModel {
     required this.message,
     required this.timestamp,
     required this.images,
+    this.reactions,
   });
 
   factory MessageModel.fromMap(Map<String, dynamic> map, {String? id}) {
@@ -31,6 +33,9 @@ class MessageModel {
       message: map['message'] ?? '',
       timestamp: (map['createdAt'] as Timestamp).toDate(),
       images: List<String>.from(map['images'] ?? []),
+      reactions: map['reactions'] != null
+          ? Map<String, String>.from(map['reactions'])
+          : null,
     );
   }
   Map<String, dynamic> toMap() {
@@ -42,6 +47,9 @@ class MessageModel {
       'message': message,
       'createdAt': Timestamp.fromDate(timestamp),
       'images': images,
+      'reactions': reactions ?? {},
     };
   }
+
+
 }

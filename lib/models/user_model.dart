@@ -20,7 +20,7 @@ class UserModel {
       uid: map['uid'],
       name: map['fullname'],
       username: map['username'],
-      avatar: map['avatar_url'] ?? 'https://via.placeholder.com/150',
+      avatar: map['avatar_url'] ?? 'https://www.gravatar.com/avatar/placeholder?s=150&d=mp',
       lastMessage: map['last_message'],
       lastSenderUid: map['last_sender_uid'],
     );
