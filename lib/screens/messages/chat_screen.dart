@@ -37,14 +37,14 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     _conversationId = _controller.getConversationId(currentUser.uid, widget.user.uid);
     _controller.countUserPosts(widget.user.uid);
-    _controller.hideEmojiKeyboard(); // nếu muốn tự động ẩn sau khi chọn
+    _controller.hideEmojiKeyboard();
   }
   @override
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
     _controller.clearImages();
-    _controller.hideEmojiKeyboard(); // nếu muốn tự động ẩn sau khi chọn
+    _controller.hideEmojiKeyboard();
     super.dispose();
   }
 
@@ -195,7 +195,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 4),
                             child: Text(
-                              _formatTimestamp(msg.timestamp),
+                              _controller.formatTimestamp(msg.timestamp),
                               style: TextStyle(fontSize: 12, color: Colors.white54),
                             ),
                           ),
@@ -303,7 +303,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
           _buildEmojiPicker(),
-          // Phần hiển thị ảnh đã chọn
+
           GetBuilder<MessagesController>(
             id: 'selected_images',
             builder: (c) {
@@ -414,96 +414,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  void _showMessageOptionsDialog(MessageModel msg) {
-    final isSender = msg.senderUid == currentUser.uid;
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (isSender)
-              ListTile(
-                leading: Icon(Icons.delete),
-                title: Text('Xóa'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  // Hiện dialog xác nhận xóa
-                  final confirmDelete = await showDialog<bool>(
-                    context: context,
-                    builder: (context) {
-                      return AlertDialog(
-                        title: Text('Xác nhận'),
-                        content: Text('Bạn có chắc muốn xóa tin nhắn này?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(false),
-                            child: Text('Hủy'),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(true),
-                            child: Text('Xóa', style: TextStyle(color: Colors.red)),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-
-                  if (confirmDelete == true) {
-                    final currentUser = FirebaseAuth.instance.currentUser!;
-                    final conversationId = _controller.getConversationId(currentUser.uid, widget.user.uid);
-
-                    if (msg.senderUid == currentUser.uid) {
-                      await _controller.deleteMessage(conversationId, msg.id);
-                    }
-                  }
-                },
-              ),
-            ListTile(
-              leading: Icon(Icons.close),
-              title: Text('Đóng'),
-              onTap: () => Navigator.pop(context),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-
-  String _formatTimestamp(DateTime dt) {
-    final now = DateTime.now();
-    final diff = now.difference(dt);
-
-    if (diff.inMinutes < 1) {
-      return 'Vừa xong';
-    } else if (diff.inHours < 1) {
-      return '${diff.inMinutes} phút trước';
-    } else if (diff.inDays < 1) {
-      return '${diff.inHours} giờ trước';
-    } else if (diff.inDays < 7) {
-      return '${diff.inDays} ngày trước';
-    }
-    return '${dt.day}/${dt.month}/${dt.year}';
-  }
-
-  void _openImageFullScreen(BuildContext context, List<String> images, int index) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => Scaffold(
-          backgroundColor: Colors.black,
-          appBar: AppBar(backgroundColor: Colors.transparent),
-          body: Center(
-            child: InteractiveViewer(
-              child: Image.network(images[index]),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildEmojiPicker() {
     return GetBuilder<MessagesController>(
       id: 'emoji',
@@ -517,6 +427,7 @@ class _ChatScreenState extends State<ChatScreen> {
       },
     );
   }
+
   Widget _buildReactions(MessageModel msg) {
     if (msg.reactions == null || msg.reactions!.isEmpty) return SizedBox.shrink();
 
@@ -578,5 +489,77 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  void _showMessageOptionsDialog(MessageModel msg) {
+    final isSender = msg.senderUid == currentUser.uid;
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isSender)
+              ListTile(
+                leading: Icon(Icons.delete),
+                title: Text('Xóa'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  // Hiện dialog xác nhận xóa
+                  final confirmDelete = await showDialog<bool>(
+                    context: context,
+                    builder: (context) {
+                      return AlertDialog(
+                        title: Text('Xác nhận'),
+                        content: Text('Bạn có chắc muốn xóa tin nhắn này?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            child: Text('Hủy'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            child: Text('Xóa', style: TextStyle(color: Colors.red)),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+
+                  if (confirmDelete == true) {
+                    final currentUser = FirebaseAuth.instance.currentUser!;
+                    final conversationId = _controller.getConversationId(currentUser.uid, widget.user.uid);
+
+                    if (msg.senderUid == currentUser.uid) {
+                      await _controller.deleteMessage(conversationId, msg.id);
+                    }
+                  }
+                },
+              ),
+            ListTile(
+              leading: Icon(Icons.close),
+              title: Text('Đóng'),
+              onTap: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openImageFullScreen(BuildContext context, List<String> images, int index) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(backgroundColor: Colors.transparent),
+          body: Center(
+            child: InteractiveViewer(
+              child: Image.network(images[index]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 

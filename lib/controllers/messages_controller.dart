@@ -261,7 +261,6 @@ class MessagesController extends GetxController {
     return controller.stream;
   }
 
-  // đổi tên hàm cho dễ nhớ
   Stream<List<UserModel>> getRecentConversationsStream() {
     return getRecentConversations(currentUserId);
   }
@@ -325,13 +324,27 @@ class MessagesController extends GetxController {
     Map<String, dynamic> reactions = Map<String, dynamic>.from(data['reactions'] ?? {});
 
     if (reactions[currentUserId] == reactionKey) {
-      // Nếu reaction giống rồi thì bỏ reaction (tắt)
       reactions.remove(currentUserId);
     } else {
-      // Thêm hoặc đổi reaction
       reactions[currentUserId] = reactionKey;
     }
 
     await messageRef.update({'reactions': reactions});
+  }
+
+  String formatTimestamp(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+
+    if (diff.inMinutes < 1) {
+      return 'Vừa xong';
+    } else if (diff.inHours < 1) {
+      return '${diff.inMinutes} phút trước';
+    } else if (diff.inDays < 1) {
+      return '${diff.inHours} giờ trước';
+    } else if (diff.inDays < 7) {
+      return '${diff.inDays} ngày trước';
+    }
+    return '${dt.day}/${dt.month}/${dt.year}';
   }
 }
