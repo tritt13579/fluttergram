@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttergram/utils/snackbar_utils.dart';
 import 'package:get/get.dart';
 
 import '../models/post_model.dart';
@@ -53,10 +54,17 @@ class EditPostController extends GetxController {
 
   void _extractMentionsAndHashtags() {
     final RegExp hashtagRegExp = RegExp(r'#(\w+)');
-    extractedHashtags.value = hashtagRegExp
+    final allHashtags = hashtagRegExp
         .allMatches(captionController.text)
         .map((match) => match.group(1)!)
         .toList();
+
+    if (allHashtags.length > 30) {
+      extractedHashtags.value = allHashtags.take(30).toList();
+      SnackbarUtils.showWarning('Chỉ được sử dụng tối đa 30 hashtag');
+    } else {
+      extractedHashtags.value = allHashtags;
+    }
 
     final RegExp mentionRegExp = RegExp(r'@(\w+)');
     extractedTaggedUsers.value = mentionRegExp
@@ -192,22 +200,12 @@ class EditPostController extends GetxController {
       }
 
       Get.back();
-      showSuccess('Bài viết đã được cập nhật');
+      SnackbarUtils.showSuccess('Bài viết đã được cập nhật');
     } catch (e) {
-      showError('Không thể cập nhật bài viết: $e');
+      SnackbarUtils.showError('Không thể cập nhật bài viết: $e');
     } finally {
       isLoading.value = false;
     }
-  }
-
-  void showError(String message) {
-    Get.snackbar('Lỗi', message,
-        backgroundColor: Colors.red, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
-  }
-
-  void showSuccess(String message) {
-    Get.snackbar('Thành công', message,
-        backgroundColor: Colors.green, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
   }
 
   @override

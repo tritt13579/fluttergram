@@ -2,11 +2,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttergram/layouts/main_layout.dart';
 import 'package:get/get.dart';
 
-import '../main.dart';
 import '../services/firebase_service.dart';
 import '../services/post_service.dart';
+import '../utils/snackbar_utils.dart';
 
 class FinalPostController extends GetxController {
   final List<Uint8List?> mediaList;
@@ -48,10 +49,17 @@ class FinalPostController extends GetxController {
 
   void _extractMentionsAndHashtags() {
     final RegExp hashtagRegExp = RegExp(r'#(\w+)');
-    extractedHashtags.value = hashtagRegExp
+    final allHashtags = hashtagRegExp
         .allMatches(captionController.text)
         .map((match) => match.group(1)!)
         .toList();
+
+    if (allHashtags.length > 30) {
+      extractedHashtags.value = allHashtags.take(30).toList();
+      SnackbarUtils.showWarning('Chỉ được sử dụng tối đa 30 hashtag');
+    } else {
+      extractedHashtags.value = allHashtags;
+    }
 
     final RegExp mentionRegExp = RegExp(r'@(\w+)');
     extractedTaggedUsers.value = mentionRegExp
@@ -169,7 +177,7 @@ class FinalPostController extends GetxController {
       final userDoc = await firebaseService.firestore.collection('users').doc(userId).get();
 
       if (!userDoc.exists) {
-        showError('Không tìm thấy thông tin người dùng');
+        SnackbarUtils.showError('Không tìm thấy thông tin người dùng');
         isLoading.value = false;
         return;
       }
@@ -186,7 +194,7 @@ class FinalPostController extends GetxController {
       final List<String> mediaUrls = await postService.uploadMediaFiles(mediaList, userId!);
 
       if (captionText.isEmpty && mediaUrls.isEmpty) {
-        showWarning('Vui lòng nhập caption hoặc chọn ảnh/video');
+        SnackbarUtils.showWarning('Vui lòng nhập caption hoặc chọn ảnh/video');
         isLoading.value = false;
         return;
       }
@@ -202,27 +210,12 @@ class FinalPostController extends GetxController {
       );
 
       Get.offAll(MainLayout());
-      showSuccess('Bài viết đã được đăng');
+      SnackbarUtils.showSuccess('Bài viết đã được đăng');
     } catch (e) {
-      showError('Không thể đăng bài: $e');
+      SnackbarUtils.showError('Không thể đăng bài: $e');
     } finally {
       isLoading.value = false;
     }
-  }
-
-  void showError(String message) {
-    Get.snackbar('Lỗi', message,
-        backgroundColor: Colors.red, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
-  }
-
-  void showWarning(String message) {
-    Get.snackbar('Thiếu nội dung', message,
-        backgroundColor: Colors.orange, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
-  }
-
-  void showSuccess(String message) {
-    Get.snackbar('Thành công', message,
-        backgroundColor: Colors.green, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
   }
 
   @override
