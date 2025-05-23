@@ -15,7 +15,7 @@ class PostItem extends StatelessWidget {
   final VoidCallback onLikeToggle;
   final VoidCallback onCommentTap;
   final VoidCallback onProfileTap;
-  final RxBool _isExpanded = false.obs;
+  final RxBool isExpanded = false.obs;
 
   PostItem({
     super.key,
@@ -286,7 +286,7 @@ class PostItem extends StatelessWidget {
                 child: Icon(
                   isLiked ? FontAwesomeIcons.solidHeart : FontAwesomeIcons.heart,
                   size: 24,
-                  color: isLiked ? Colors.pinkAccent : null,
+                  color: isLiked ? Colors.red[400] : null,
                 ),
               ),
               if (post.likeCount > 0)
@@ -296,7 +296,7 @@ class PostItem extends StatelessWidget {
                     post.likeCount.toString(),
                     style: TextStyle(
                       fontSize: 14,
-                      color: isLiked ? Colors.pinkAccent : Colors.white,
+                      color: isLiked ? Colors.red[400] : Colors.white,
                     ),
                   ),
                 ),
@@ -363,15 +363,15 @@ class PostItem extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Obx(() => RichText(
-            maxLines: _isExpanded.value ? null : 2,
-            overflow: _isExpanded.value ? TextOverflow.visible : TextOverflow.ellipsis,
+            maxLines: isExpanded.value ? null : 2,
+            overflow: isExpanded.value ? TextOverflow.visible : TextOverflow.ellipsis,
             text: captionText,
           )),
 
           if (exceedMaxLines)
-            Obx(() => _isExpanded.value
+            Obx(() => isExpanded.value
                 ? GestureDetector(
-              onTap: () => _isExpanded.value = false,
+              onTap: () => isExpanded.value = false,
               child: Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
@@ -384,7 +384,7 @@ class PostItem extends StatelessWidget {
               ),
             )
                 : GestureDetector(
-              onTap: () => _isExpanded.value = true,
+              onTap: () => isExpanded.value = true,
               child: Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(

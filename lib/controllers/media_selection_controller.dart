@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:fluttergram/screens/create_post/post_editor_screen.dart';
@@ -66,37 +65,11 @@ class MediaSelectionController extends GetxController {
     update(['assetGrid']);
   }
 
-  void showAlbumSelection() {
-    Get.bottomSheet(
-      Container(
-        color: Colors.black,
-        child: ListView.builder(
-          itemCount: albums.length,
-          itemBuilder: (context, index) {
-            final album = albums[index];
-            return ListTile(
-              title: Text(
-                album.name,
-                style: const TextStyle(color: Colors.white),
-              ),
-              trailing: Obx(() =>
-              currentAlbum.value?.id == album.id
-                  ? const Icon(Icons.check, color: Colors.blue)
-                  : const SizedBox.shrink()
-              ),
-              onTap: () {
-                currentAlbum.value = album;
-                _loadAssets();
-                Get.back();
-              },
-            );
-          },
-        ),
-      ),
-    );
+  void selectAlbum(AssetPathEntity album) {
+    currentAlbum.value = album;
+    _loadAssets();
   }
 
-  // Direct access to image assets only
   List<AssetEntity> get imageAssets {
     return assetList;
   }

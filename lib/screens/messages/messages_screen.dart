@@ -140,62 +140,100 @@ class MessagesScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          ...users.map((user) => ListTile(
-            leading: CircleAvatar(
-              backgroundImage: NetworkImage(user.avatar),
-              radius: 24,
+          // Tiêu đề nhóm người dùng
+          Text(
+            title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+
+          // Danh sách người dùng
+          for (int i = 0; i < users.length; i++)
+            _buildUserTile(
+              user: users[i],
+              context: context,
+              controller: controller,
+              showMenu: showMenu,
             ),
-            title: Text(user.name),
-            subtitle: Text(
-              showMenu
-                  ? (user.lastMessage != null && user.lastMessage!.trim().isNotEmpty
-                  ? (user.lastSenderUid == controller!.currentUserId
-                  ? 'Bạn: ${user.lastMessage}'
-                  : '${user.name}: ${user.lastMessage}')
-                  : 'Nhấn vào để chat')
-                  : user.username,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => ChatScreen(user: user)),
-              );
-            },
-            trailing: showMenu
-                ? PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert),
-              onSelected: (value) async {
-                if (value == 'delete') {
-                  bool? confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      title: const Text('Xác nhận'),
-                      content: const Text(
-                          'Bạn có chắc chắn muốn xóa kênh tin nhắn này? (các tin nhắn sẽ bị xóa toàn bộ)'),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Hủy')),
-                        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Xóa')),
-                      ],
-                    ),
-                  );
-                  if (confirm == true) {
-                    await controller!.deleteConversationAndMessages(user.uid);
-                    Get.snackbar('Thông báo', 'Đã xóa tin nhắn.');
-                  }
-                }
-              },
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 'delete', child: Text('Xóa tin nhắn')),
-                PopupMenuItem(value: 'hide', child: Text('Ẩn tin nhắn')),
-              ],
-            )
-                : null,
-          )),
         ],
       ),
+    );
+  }
+
+// Hàm tạo ListTile cho từng user
+  Widget _buildUserTile({
+    required UserModel user,
+    required BuildContext context,
+    MessagesController? controller,
+    required bool showMenu,
+  }) {
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundImage: NetworkImage(user.avatar),
+        radius: 24,
+      ),
+      title: Text(user.name),
+      subtitle: Text(
+        showMenu
+            ? _getLastMessageText(user, controller)
+            : user.username,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => ChatScreen(user: user)),
+        );
+      },
+      trailing: showMenu
+          ? _buildPopupMenu(context, user, controller)
+          : null,
+    );
+  }
+
+  String _getLastMessageText(UserModel user, MessagesController? controller) {
+    if (user.lastMessage != null && user.lastMessage!.trim().isNotEmpty) {
+      if (user.lastSenderUid == controller?.currentUserId) {
+        return 'Bạn: ${user.lastMessage}';
+      } else {
+        return '${user.name}: ${user.lastMessage}';
+      }
+    }
+    return 'Nhấn vào để chat';
+  }
+
+  Widget _buildPopupMenu(BuildContext context, UserModel user, MessagesController? controller) {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert),
+      onSelected: (value) async {
+        if (value == 'delete') {
+          bool? confirm = await showDialog<bool>(
+            context: context,
+            builder: (_) => AlertDialog(
+              title: const Text('Xác nhận'),
+              content: const Text('Bạn có chắc chắn muốn xóa kênh tin nhắn này? (các tin nhắn sẽ bị xóa toàn bộ)'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Hủy'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Xóa'),
+                ),
+              ],
+            ),
+          );
+          if (confirm == true) {
+            await controller?.deleteConversationAndMessages(user.uid);
+            Get.snackbar('Thông báo', 'Đã xóa kênh tin nhắn.');
+          }
+        }
+      },
+      itemBuilder: (_) => const [
+        PopupMenuItem(value: 'delete', child: Text('Xóa tin nhắn')),
+        PopupMenuItem(value: 'close', child: Text('Đóng')),
+      ],
     );
   }
 }

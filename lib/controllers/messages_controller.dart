@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -21,6 +22,11 @@ class MessagesController extends GetxController {
   String? get userId => currentUser?.uid;
   String currentUserId = '';
   String currentUsername = '';
+  int userPostCount = 0;
+  final TextEditingController searchController = TextEditingController();
+  String searchKeyword = '';
+  List<File> selectedImages = [];
+  bool isUploading = false;
 
   @override
   void onInit() {
@@ -33,6 +39,49 @@ class MessagesController extends GetxController {
           update();
         }
       });
+    }
+  }
+
+  void updateSearchKeyword(String keyword) {
+    searchKeyword = keyword.toLowerCase();
+    update();
+  }
+
+  void addImages(List<File> images) {
+    selectedImages.addAll(images);
+    update(['selected_images']);
+  }
+
+  void removeImageAt(int index) {
+    selectedImages.removeAt(index);
+    update(['selected_images']);
+  }
+
+  void clearImages() {
+    selectedImages.clear();
+    update(['selected_images']);
+  }
+
+  void setUploading(bool uploading) {
+    isUploading = uploading;
+    update(['uploading_status']);
+  }
+
+  Future<void> countUserPosts(String ownerId) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection('posts')
+          .where('ownerId', isEqualTo: ownerId)
+          .get();
+
+      userPostCount = querySnapshot.docs.length;
+      update(['user_post_count']);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Lỗi đếm bài viết: $e');
+      }
+      userPostCount = 0;
+      update(['user_post_count']);
     }
   }
 
@@ -60,7 +109,7 @@ class MessagesController extends GetxController {
       'receiver_uid': msg.receiverUid,
       'message': msg.message,
       'createdAt': Timestamp.fromDate(msg.timestamp),
-      'images': imageUrls, // thêm dòng này
+      'images': imageUrls,
     };
 
     final convData = {
@@ -90,7 +139,9 @@ class MessagesController extends GetxController {
           final ref = _storage.refFromURL(url);
           await ref.delete();
         } catch (e) {
-          print('Lỗi khi xóa ảnh: $e');
+          if (kDebugMode) {
+            print('Lỗi khi xóa ảnh: $e');
+          }
         }
       }
 
@@ -124,8 +175,6 @@ class MessagesController extends GetxController {
     }
   }
 
-
-
   Future<void> deleteConversation(String currentUserId, String otherUserId) async {
     final snapshot = await _firestore
         .collection('conversations')
@@ -146,7 +195,9 @@ class MessagesController extends GetxController {
               final ref = _storage.refFromURL(url);
               await ref.delete();
             } catch (e) {
-              print('Lỗi khi xóa ảnh: $e');
+              if (kDebugMode) {
+                print('Lỗi khi xóa ảnh: $e');
+              }
             }
           }
 
@@ -157,11 +208,6 @@ class MessagesController extends GetxController {
         break;
       }
     }
-  }
-
-  Stream<List<UserModel>> getUsersStream() {
-    return _firestore.collection('users').snapshots().map(
-            (snapshot) => snapshot.docs.map((e) => UserModel.fromMap(e.data())).toList());
   }
 
   Stream<List<UserModel>> getRecentConversations(String currentUserId) {
@@ -186,25 +232,6 @@ class MessagesController extends GetxController {
       }
 
       return users;
-    });
-  }
-
-  Stream<List<String>> getConversationUserIdsStream(String currentUserId) {
-    return _firestore
-        .collection('conversations')
-        .where('members', arrayContains: currentUserId)
-        .snapshots()
-        .map((snapshot) {
-      final userIds = <String>{};
-      for (var doc in snapshot.docs) {
-        final members = List<String>.from(doc['members']);
-        for (var id in members) {
-          if (id != currentUserId) {
-            userIds.add(id);
-          }
-        }
-      }
-      return userIds.toList();
     });
   }
 
@@ -241,20 +268,6 @@ class MessagesController extends GetxController {
     return controller.stream;
   }
 
-  Future<String> uploadImage({required File image, required String path}) {
-    return _firebaseService.uploadImage(image: image, path: path);
-  }
-
-  Future<String> updateImage({required File image, required String path}) {
-    return _firebaseService.updateImage(image: image, path: path);
-  }
-
-  Future<void> deleteImage({required String path}) {
-    return _firebaseService.deleteImage(path: path);
-  }
-
-
-  // đổi tên hàm cho dễ nhớ
   Stream<List<UserModel>> getRecentConversationsStream() {
     return getRecentConversations(currentUserId);
   }
@@ -268,64 +281,6 @@ class MessagesController extends GetxController {
       await deleteConversation(userId!, otherUserId);
     }
   }
-
-  Future<void> updateMessage(
-      String conversationId,
-      String messageId,
-      String newContent, {
-        List<String>? images,
-      }) async {
-    final messagesRef = FirebaseFirestore.instance
-        .collection('conversations')
-        .doc(conversationId)
-        .collection('messages');
-
-    final docRef = messagesRef.doc(messageId);
-
-    Map<String, dynamic> updateData = {
-      'message': newContent,
-      'editedTimestamp': DateTime.now(),
-    };
-
-    if (images != null) {
-      updateData['images'] = images;
-    }
-
-    await docRef.update(updateData);
-
-    final lastMessageQuery = await messagesRef
-        .orderBy('createdAt', descending: true)
-        .limit(1)
-        .get();
-
-    if (lastMessageQuery.docs.isNotEmpty &&
-        lastMessageQuery.docs.first.id == messageId) {
-      await FirebaseFirestore.instance
-          .collection('conversations')
-          .doc(conversationId)
-          .update({
-        'last_message': newContent,
-        'last_sender_uid': lastMessageQuery.docs.first['sender_uid'],
-        'timestamp': Timestamp.now(),
-      });
-    }
-  }
-
-
-  Future<MessageModel> getMessageById(String conversationId, String messageId) async {
-    final doc = await FirebaseFirestore.instance
-        .collection('conversations')
-        .doc(conversationId)
-        .collection('messages')
-        .doc(messageId)
-        .get();
-
-    if (!doc.exists) throw Exception('Message not found');
-
-    return MessageModel.fromMap(doc.data()!..['id'] = doc.id);
-  }
-
-
 
   String getConversationId(String uid1, String uid2) {
     final sorted = [uid1, uid2]..sort();
@@ -346,11 +301,57 @@ class MessagesController extends GetxController {
     return imageUrls;
   }
 
-  final TextEditingController searchController = TextEditingController();
-  String searchKeyword = '';
+  bool _isEmojiVisible = false;
+  bool get isEmojiVisible => _isEmojiVisible;
 
-  void updateSearchKeyword(String keyword) {
-    searchKeyword = keyword.toLowerCase();
-    update();  // trigger GetBuilder rebuild
+  void toggleEmojiKeyboard() {
+    _isEmojiVisible = !_isEmojiVisible;
+    update(['emoji']);
+  }
+
+  void hideEmojiKeyboard() {
+    if (_isEmojiVisible) {
+      _isEmojiVisible = false;
+      update(['emoji']);
+    }
+  }
+
+  Future<void> addOrRemoveReaction(String conversationId, String messageId, String reactionKey) async {
+    final currentUserId = FirebaseAuth.instance.currentUser!.uid;
+    final messageRef = FirebaseFirestore.instance
+        .collection('conversations')
+        .doc(conversationId)
+        .collection('messages')
+        .doc(messageId);
+
+    final doc = await messageRef.get();
+    if (!doc.exists) return;
+
+    final data = doc.data()!;
+    Map<String, dynamic> reactions = Map<String, dynamic>.from(data['reactions'] ?? {});
+
+    if (reactions[currentUserId] == reactionKey) {
+      reactions.remove(currentUserId);
+    } else {
+      reactions[currentUserId] = reactionKey;
+    }
+
+    await messageRef.update({'reactions': reactions});
+  }
+
+  String formatTimestamp(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+
+    if (diff.inMinutes < 1) {
+      return 'Vừa xong';
+    } else if (diff.inHours < 1) {
+      return '${diff.inMinutes} phút trước';
+    } else if (diff.inDays < 1) {
+      return '${diff.inHours} giờ trước';
+    } else if (diff.inDays < 7) {
+      return '${diff.inDays} ngày trước';
+    }
+    return '${dt.day}/${dt.month}/${dt.year}';
   }
 }

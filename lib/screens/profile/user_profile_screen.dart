@@ -8,7 +8,6 @@ import '../../models/user_model.dart';
 import '../../services/firebase_service.dart';
 import '../../services/post_service.dart';
 import '../messages/chat_screen.dart';
-import 'edit_profile_screen.dart';
 import 'post_profile_screen.dart';
 
 class UserProfileScreen extends StatefulWidget {
@@ -138,8 +137,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             ),
 
             const SizedBox(height: 16),
-
-            Padding(
+              Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
