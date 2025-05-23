@@ -89,24 +89,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 children: [
-                  Stack(
-                    children: [
-                      CircleAvatar(
-                        radius: 40,
-                        backgroundImage: avatarUrl.isNotEmpty
-                            ? NetworkImage(avatarUrl)
-                            : const AssetImage('assets/avatar.png') as ImageProvider,
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: CircleAvatar(
-                          radius: 12,
-                          backgroundColor: Colors.blue,
-                          child: const Icon(Icons.add, color: Colors.white, size: 18),
-                        ),
-                      ),
-                    ],
+                  CircleAvatar(
+                    radius: 40,
+                    backgroundImage: avatarUrl.isNotEmpty
+                        ? NetworkImage(avatarUrl)
+                        : const AssetImage('assets/images/default_avatar.jpg') as ImageProvider,
                   ),
                   const SizedBox(width: 20),
                   Expanded(
@@ -139,7 +126,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text('@' + username, style: const TextStyle(color: Colors.grey)),
+                    Text('@$username', style: const TextStyle(color: Colors.grey)),
                     const SizedBox(height: 4),
                     Text(bio, style: const TextStyle(color: Colors.white)),
                   ],
@@ -151,7 +138,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             // Nút chỉnh sửa & đăng xuất
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 6),
               child: Row(
                 children: [
                   Expanded(
@@ -177,7 +164,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 4),
                   Expanded(
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(

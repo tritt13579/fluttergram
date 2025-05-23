@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttergram/controllers/profile_controller.dart';
 import 'package:get/get.dart';
 import '../../controllers/searchfl_controller.dart';
 import '../../widgets/post_item.dart';
@@ -104,6 +105,11 @@ class SearchScreen extends StatelessWidget {
                   style: const TextStyle(color: Colors.white)),
               onTap: () {
                 //chuyen huong Profile
+                String userId = user['uid'];
+                if (!Get.isRegistered<ProfileController>()) {
+                  Get.put(ProfileController());
+                }
+                Get.find<ProfileController>().navigateToProfile(userId);
               },
             );
           },

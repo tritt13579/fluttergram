@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttergram/utils/snackbar_utils.dart';
 import 'package:get/get.dart';
 import '../../services/firebase_service.dart';
 import '../../models/user_model.dart';
@@ -41,7 +42,8 @@ class AddStoryScreen extends StatelessWidget {
               );
 
               Get.back();
-              Get.snackbar('Thành công', 'Đã đăng Story!');
+              // Get.snackbar('Thành công', 'Đã đăng Story!');
+              SnackbarUtils.showSuccess('Đã đăng Story!');
             },
           ),
         ],
@@ -71,7 +73,7 @@ class AddStoryScreen extends StatelessWidget {
                     child: Container(
                       height: 56,
                       decoration: BoxDecoration(
-                        color: Colors.grey[900]?.withOpacity(0.85),
+                        color: Colors.grey[900]?.withAlpha((0.85 * 255).toInt()),
                         borderRadius: BorderRadius.circular(24),
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -100,7 +102,7 @@ class AddStoryScreen extends StatelessWidget {
                     child: Container(
                       height: 56,
                       decoration: BoxDecoration(
-                        color: Colors.grey[900]?.withOpacity(0.85),
+                        color: Colors.grey[900]?.withAlpha((0.85 * 255).toInt()),
                         borderRadius: BorderRadius.circular(24),
                       ),
                       child: const Center(

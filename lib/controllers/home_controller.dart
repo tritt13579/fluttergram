@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
@@ -6,11 +5,9 @@ import 'package:flutter/material.dart';
 import '../../models/post_model.dart';
 import '../../services/firebase_service.dart';
 import '../../services/post_service.dart';
-import '../models/comment_model.dart';
 import '../models/user_model.dart';
 import '../screens/profile/user_profile_screen.dart';
 import '../utils/snackbar_utils.dart';
-import '../widgets/comment_bottom_sheet.dart';
 import 'bottom_nav_controller.dart';
 
 class HomeController extends GetxController {
@@ -20,11 +17,7 @@ class HomeController extends GetxController {
   final RxList<PostModel> posts = <PostModel>[].obs;
   final RxBool isLoading = true.obs;
   final RxBool hasMorePosts = true.obs;
-  final RxList<CommentModel> comments = <CommentModel>[].obs;
-  final RxBool isLoadingComments = false.obs;
-  final RxBool hasMoreComments = true.obs;
   final TextEditingController commentController = TextEditingController();
-  DocumentSnapshot? lastCommentDoc;
   final Rx<UserModel?> currentUser = Rx<UserModel?>(null);
   final Rx<Map<String, bool>> showHeartMap = Rx<Map<String, bool>>({});
 
@@ -227,126 +220,8 @@ class HomeController extends GetxController {
     });
   }
 
-  Future<void> loadComments(String postId) async {
-    isLoadingComments.value = true;
-    comments.clear();
-    lastCommentDoc = null;
-    hasMoreComments.value = true;
-
-    try {
-      final commentsList = await postService.getPostComments(
-        postId,
-        limit: 20,
-      );
-
-      comments.assignAll(commentsList);
-
-      if (commentsList.isNotEmpty) {
-        final lastDoc = await firebaseService.firestore
-            .collection('posts')
-            .doc(postId)
-            .collection('comments')
-            .doc(commentsList.last.id)
-            .get();
-
-        lastCommentDoc = lastDoc;
-      }
-
-      hasMoreComments.value = commentsList.length == 20;
-    } catch (e) {
-      debugPrint('Error loading comments: $e');
-    } finally {
-      isLoadingComments.value = false;
-    }
-  }
-
-  Future<void> loadMoreComments(String postId) async {
-    if (!hasMoreComments.value || isLoadingComments.value || lastCommentDoc == null) return;
-
-    isLoadingComments.value = true;
-
-    try {
-      final commentsList = await postService.getPostComments(
-        postId,
-        limit: 20,
-        lastDocument: lastCommentDoc,
-      );
-
-      comments.addAll(commentsList);
-
-      if (commentsList.isNotEmpty) {
-        final lastDoc = await firebaseService.firestore
-            .collection('posts')
-            .doc(postId)
-            .collection('comments')
-            .doc(commentsList.last.id)
-            .get();
-
-        lastCommentDoc = lastDoc;
-      }
-
-      hasMoreComments.value = commentsList.length == 20;
-    } catch (e) {
-      debugPrint('Error loading more comments: $e');
-    } finally {
-      isLoadingComments.value = false;
-    }
-  }
-
-  Future<void> addComment(String postId) async {
-    if (currentUserId == null || commentController.text.trim().isEmpty) return;
-
-    final text = commentController.text.trim();
-    commentController.clear();
-
-    try {
-      final userDoc = await firebaseService.firestore
-          .collection('users')
-          .doc(currentUserId)
-          .get();
-
-      String? username;
-      String? userAvatar;
-
-      if (userDoc.exists) {
-        final userData = userDoc.data() as Map<String, dynamic>;
-        username = userData['username'];
-        userAvatar = userData['avatar_url'];
-      }
-
-      await postService.addComment(
-        postId: postId,
-        userId: currentUserId!,
-        text: text,
-        username: username,
-        userAvatar: userAvatar,
-      );
-
-      loadComments(postId);
-
-      final index = posts.indexWhere((p) => p.id == postId);
-      if (index != -1) {
-        final updatedPost = posts[index].copyWith(
-          commentCount: posts[index].commentCount + 1,
-        );
-
-        posts[index] = updatedPost;
-      }
-    } catch (e) {
-      SnackbarUtils.showError('Không thể thêm bình luận: $e');
-    }
-  }
-
   void navigateToComments(String postId) {
-    loadComments(postId);
-    Get.bottomSheet(
-      CommentBottomSheet(
-        postId: postId,
-        controller: this,
-      ),
-      isScrollControlled: true,
-      backgroundColor: Colors.black,
-    );
+    // comment
   }
 
   void navigateToProfile(String userId) {

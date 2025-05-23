@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pro_image_editor/plugins/emoji_picker_flutter/emoji_picker_flutter.dart';
 import '../../controllers/messages_controller.dart';
+import '../../controllers/profile_controller.dart';
 import '../../models/message_model.dart';
 import '../../models/user_model.dart';
 
@@ -103,9 +104,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _pickImages() async {
     final picker = ImagePicker();
-    final List<XFile>? files = await picker.pickMultiImage();
+    final List<XFile> files = await picker.pickMultiImage();
 
-    if (files != null && files.isNotEmpty) {
+    if (files.isNotEmpty) {
       List<File> validImages = [];
 
       for (XFile file in files) {
@@ -175,8 +176,13 @@ class _ChatScreenState extends State<ChatScreen> {
                             },
                           ),
                           const SizedBox(height: 4),
-                          Text('Bạn hãy nhắn tin với tài khoản Instagram này',
+                          Text('Bạn hãy nhắn tin với tài khoản Fluttergram này',
                               style: TextStyle(color: Colors.grey, fontSize: 12)),
+                          ElevatedButton(
+                            onPressed: () {
+                                Get.put(ProfileController()).navigateTo(widget.user.uid);
+                            },
+                            child: Text('Xem trang cá nhân')),
                           const SizedBox(height: 16),
                         ],
                       );

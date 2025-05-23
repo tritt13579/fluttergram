@@ -49,10 +49,17 @@ class FinalPostController extends GetxController {
 
   void _extractMentionsAndHashtags() {
     final RegExp hashtagRegExp = RegExp(r'#(\w+)');
-    extractedHashtags.value = hashtagRegExp
+    final allHashtags = hashtagRegExp
         .allMatches(captionController.text)
         .map((match) => match.group(1)!)
         .toList();
+
+    if (allHashtags.length > 30) {
+      extractedHashtags.value = allHashtags.take(30).toList();
+      SnackbarUtils.showWarning('Chỉ được sử dụng tối đa 30 hashtag');
+    } else {
+      extractedHashtags.value = allHashtags;
+    }
 
     final RegExp mentionRegExp = RegExp(r'@(\w+)');
     extractedTaggedUsers.value = mentionRegExp

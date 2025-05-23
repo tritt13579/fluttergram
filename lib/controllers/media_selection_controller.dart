@@ -70,7 +70,6 @@ class MediaSelectionController extends GetxController {
     _loadAssets();
   }
 
-  // Direct access to image assets only
   List<AssetEntity> get imageAssets {
     return assetList;
   }
