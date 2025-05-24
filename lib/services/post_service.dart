@@ -110,6 +110,15 @@ class PostService {
     await batch.commit();
   }
 
+  Future<List<PostModel>> getTrendingPosts({int limit = 20}) async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('posts')
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .get();
+    return snapshot.docs.map((doc) => PostModel.fromFirestore(doc)).toList();
+  }
+
   Future<void> updatePost({
     required String postId,
     required String caption,

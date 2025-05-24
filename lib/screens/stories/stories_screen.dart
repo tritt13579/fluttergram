@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../../models/story_model.dart';
+import '../../controllers/story_controller.dart';
 
 class StoriesScreen extends StatelessWidget {
   final List<StoryModel> stories;
@@ -19,6 +21,12 @@ class StoriesScreen extends StatelessWidget {
 
     final userAvatar = stories.first.userAvatar;
     final username = stories.first.username;
+
+    final storyController = Get.find<StoryController>();
+
+    for (final story in stories) {
+      storyController.loadLikeStatus(story.id);
+    }
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -83,10 +91,31 @@ class StoriesScreen extends StatelessWidget {
           Positioned(
             right: 16,
             top: MediaQuery.of(context).size.height / 2 - 40,
-            child: Column(
-              children: const [
-                Icon(Icons.favorite_border, color: Colors.white, size: 30),
-              ],
+            child: ValueListenableBuilder<int>(
+              valueListenable: currentIndex,
+              builder: (context, idx, _) {
+                final storyId = stories[idx].id;
+                return Obx(() => Column(
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        storyController.liked[storyId]?.value == true
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        color: storyController.liked[storyId]?.value == true
+                            ? Colors.red
+                            : Colors.white,
+                        size: 30,
+                      ),
+                      onPressed: () => storyController.toggleLike(storyId),
+                    ),
+                    Text(
+                      (storyController.likes[storyId]?.value ?? 0).toString(),
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ],
+                ));
+              },
             ),
           ),
           if (stories.length > 1)

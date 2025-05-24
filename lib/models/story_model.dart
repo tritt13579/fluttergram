@@ -41,5 +41,26 @@ class StoryModel {
       'userAvatar': userAvatar,
     };
   }
-}
 
+  static Future<List<StoryModel>> fetchStoriesForUser(String userId) async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('stories')
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .get();
+    return snapshot.docs
+        .map((doc) => StoryModel.fromFirestore(doc, null))
+        .where((story) => DateTime.now().difference(story.createdAt).inHours < 24)
+        .toList();
+  }
+
+  static Future<StoryModel?> fetchLatestStoryForUser(String userId) async {
+    final stories = await fetchStoriesForUser(userId);
+    return stories.isNotEmpty ? stories.first : null;
+  }
+
+  static Future<bool> hasActiveStory(String userId) async {
+    final story = await fetchLatestStoryForUser(userId);
+    return story != null;
+  }
+}

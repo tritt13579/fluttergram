@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../controllers/story_section_controller.dart';
-import '../../models/story_model.dart';
+import '../../../controllers/story_section_controller.dart';
+import '../../../models/story_model.dart';
 import 'story_circle.dart';
 
 class StoriesSection extends StatelessWidget {

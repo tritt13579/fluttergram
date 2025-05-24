@@ -13,14 +13,14 @@ class SearchFlutterController extends GetxController {
 
   final TextEditingController textEditingController = TextEditingController();
   final RxString searchQuery = ''.obs;
-
+  final RxList<PostModel> trendingPosts = <PostModel>[].obs;
   final Rx<SearchMode> searchMode = SearchMode.initial.obs;
   final RxBool isLoading = false.obs;
   final RxList<QueryDocumentSnapshot<Map<String, dynamic>>> userResults =
       <QueryDocumentSnapshot<Map<String, dynamic>>>[].obs;
   final RxList<String> hashtagSuggestions = <String>[].obs;
   final RxList<PostModel> hashtagPostsResults = <PostModel>[].obs;
-  Timer? _debounce;
+  Timer? _debounce; //deplay
 
   @override
   void onInit() {
@@ -30,6 +30,7 @@ class SearchFlutterController extends GetxController {
     }
     _postService = Get.find<PostService>();
     textEditingController.addListener(_onSearchChanged);
+    loadTrendingPosts();
   }
 
   void _onSearchChanged() {
@@ -93,6 +94,12 @@ class SearchFlutterController extends GetxController {
   }
 
 
+  Future<void> loadTrendingPosts() async {
+    isLoading.value = true;
+    final posts = await _postService.getTrendingPosts(limit: 20);
+    trendingPosts.assignAll(posts);
+    isLoading.value = false;
+  }
 
   @override
   void onClose() {

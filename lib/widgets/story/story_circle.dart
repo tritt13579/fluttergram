@@ -2,12 +2,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:get/get.dart';
-import '../../screens/stories/add_stories.dart';
-import '../../screens/stories/stories_screen.dart';
-import '../../controllers/story_controller.dart';
-import '../../models/story_model.dart';
-import '../../models/user_model.dart';
-import '../../utils/app_permissions.dart';
+import '../../../screens/stories/add_stories.dart';
+import '../../../screens/stories/stories_screen.dart';
+import '../../../controllers/story_controller.dart';
+import '../../../models/story_model.dart';
+import '../../../models/user_model.dart';
+import '../../../utils/app_permissions.dart';
 
 class StoryCircle extends StatelessWidget {
   final List<StoryModel>? stories;
