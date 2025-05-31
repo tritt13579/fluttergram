@@ -339,19 +339,5 @@ class MessagesController extends GetxController {
     await messageRef.update({'reactions': reactions});
   }
 
-  String formatTimestamp(DateTime dt) {
-    final now = DateTime.now();
-    final diff = now.difference(dt);
 
-    if (diff.inMinutes < 1) {
-      return 'Vừa xong';
-    } else if (diff.inHours < 1) {
-      return '${diff.inMinutes} phút trước';
-    } else if (diff.inDays < 1) {
-      return '${diff.inHours} giờ trước';
-    } else if (diff.inDays < 7) {
-      return '${diff.inDays} ngày trước';
-    }
-    return '${dt.day}/${dt.month}/${dt.year}';
-  }
 }
