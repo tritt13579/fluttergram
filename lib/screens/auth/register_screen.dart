@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:get/get.dart';
 
 import '../../controllers/auth_controller.dart';
 
@@ -20,6 +21,7 @@ class _SignupState extends State<RegisterScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _fullnameController = TextEditingController();
   final TextEditingController _bioController = TextEditingController();
+  final controllerAuth = Get.put(ControllerAuth());
 
   File? _avatarFile;
 
@@ -292,15 +294,13 @@ class _SignupState extends State<RegisterScreen> {
                     return;
                   }
 
-
-                  await AuthService().signup(
+                  await controllerAuth.signup(
                     email: _emailController.text.trim(),
                     password: _passwordController.text.trim(),
                     username: _usernameController.text.trim(),
                     fullname: _fullnameController.text.trim(),
                     bio: _bioController.text.trim(),
                     avatarFile: _avatarFile,
-                    context: context,
                   );
                 },
                 child: const Text("Đăng ký", style: TextStyle(color: Colors.white)),

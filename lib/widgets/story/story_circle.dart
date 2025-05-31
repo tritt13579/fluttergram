@@ -6,8 +6,8 @@ import '../../../screens/stories/add_stories.dart';
 import '../../../screens/stories/stories_screen.dart';
 import '../../../controllers/story_controller.dart';
 import '../../../models/story_model.dart';
-import '../../../models/user_model.dart';
 import '../../../utils/app_permissions.dart';
+import '../../models/user_chat_model.dart';
 
 class StoryCircle extends StatelessWidget {
   final List<StoryModel>? stories;
@@ -47,11 +47,11 @@ class StoryCircle extends StatelessWidget {
         final image = File(picked.path);
 
         final userInfo = await controller.fetchCurrentUserInfo();
-        final user = UserModel(
+        final user = UserChatModel(
           uid: controller.currentUser?.uid ?? '',
-          name: userInfo['username'] ?? '',
+          fullname: userInfo['username'] ?? '',
           username: userInfo['username'] ?? '',
-          avatar: userInfo['avatar'] ?? '',
+          avatarUrl: userInfo['avatar'] ?? '',
         );
 
         await Get.to(() => AddStoryScreen(

@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import '../../controllers/story_controller.dart';
+import '../../models/story_model.dart';
 
 class StoriesSectionController extends GetxController {
   final StoryController storyController;
@@ -26,7 +28,7 @@ class StoriesSectionController extends GetxController {
     try {
       final currentUserInfo = await storyController.fetchCurrentUserInfo();
       final currentUser = storyController.currentUser?.uid;
-      final usersSnapshot = await storyController.fetchAllUsers();
+      final users = await storyController.fetchAllUsers();
 
       final addStoryItem = {
         'avatar': currentUserInfo['avatar'],
@@ -52,21 +54,10 @@ class StoriesSectionController extends GetxController {
         });
       }
 
-      for (final doc in usersSnapshot.docs) {
-        final userId = doc.id;
-        if (userId == currentUser) continue;
-        final stories = await storyController.getStoriesForUser(userId);
-        if (stories.isNotEmpty) {
-          allStoryItems.add({
-            'avatar': doc['avatar_url'] ?? '',
-            'username': doc['username'] ?? '',
-            'userId': userId,
-            'isCurrentUser': false,
-            'hasActiveStory': true,
-            'stories': stories,
-          });
-        }
-      }
+      final others = users.where((u) => u.uid != currentUser).toList();
+      final othersStoryItems = await StoryModelSnapshot.fetchStoriesForAllUsers(others);
+
+      allStoryItems.addAll(othersStoryItems);
 
       final unviewed = allStoryItems.where((s) => !viewedStories.contains(s['userId'])).toList();
       final viewed = allStoryItems.where((s) => viewedStories.contains(s['userId'])).toList();
@@ -78,7 +69,11 @@ class StoriesSectionController extends GetxController {
       ];
 
       stories.assignAll(displayList);
-    } catch (e) {}
+    } catch (e) {
+      if (kDebugMode) {
+        print(e);
+      }
+    }
     isLoading.value = false;
   }
 

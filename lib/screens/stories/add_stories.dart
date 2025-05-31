@@ -2,12 +2,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/story_controller.dart';
-import '../../models/user_model.dart';
+import '../../models/user_chat_model.dart';
 import '../../utils/snackbar_utils.dart';
 
 class AddStoryScreen extends StatelessWidget {
   final File image;
-  final UserModel user;
+  final UserChatModel user;
 
   AddStoryScreen({
     super.key,
@@ -74,7 +74,7 @@ class AddStoryScreen extends StatelessWidget {
                             child: Row(
                               children: [
                                 CircleAvatar(
-                                  backgroundImage: NetworkImage(user.avatar),
+                                  backgroundImage: NetworkImage(user.avatarUrl),
                                   radius: 24,
                                 ),
                                 const SizedBox(width: 12),

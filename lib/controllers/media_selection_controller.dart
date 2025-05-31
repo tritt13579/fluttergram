@@ -1,3 +1,4 @@
+import 'package:fluttergram/utils/snackbar_utils.dart';
 import 'package:get/get.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:fluttergram/screens/create_post/post_editor_screen.dart';
@@ -25,6 +26,7 @@ class MediaSelectionController extends GetxController {
         'Please allow access to your media library',
         snackPosition: SnackPosition.BOTTOM,
       );
+      SnackbarUtils.showPermissionDenied(message: "Please allow access to your media library");
     }
   }
 

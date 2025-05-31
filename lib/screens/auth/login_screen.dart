@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:fluttergram/screens/auth/register_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../controllers/auth_controller.dart';
+import 'package:get/get.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,6 +15,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final controllerAuth = Get.put(ControllerAuth());
 
   @override
   void dispose() {
@@ -136,10 +138,9 @@ class _LoginState extends State<LoginScreen> {
         elevation: 0,
       ),
       onPressed: () async {
-        await AuthService().signin(
+        await controllerAuth.signin(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
-          context: context,
         );
       },
       child: const Text(

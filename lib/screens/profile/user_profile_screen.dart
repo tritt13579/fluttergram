@@ -1,10 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get/get_core/src/get_main.dart';
 import '../../controllers/messages_controller.dart';
 import '../../models/post_model.dart';
-import '../../models/user_model.dart';
+import '../../models/user_chat_model.dart';
 import '../../services/firebase_service.dart';
 import '../../services/post_service.dart';
 import '../messages/chat_screen.dart';
@@ -30,14 +29,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   String avatarUrl = '';
   bool isLoading = true;
   int postCount = 0;
+  String email = '';
+  String joinDate = '';
 
   @override
   void initState() {
     super.initState();
     _loadUserProfile();
   }
-
-  String joinDate = '';
 
   Future<void> _loadUserProfile() async {
     try {
@@ -58,6 +57,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           fullname = data['fullname'] ?? '';
           bio = data['bio'] ?? '';
           avatarUrl = data['avatar_url'] ?? '';
+          email = data['email'] ?? '';
           postCount = data['post_count'] ?? posts.length;
           userPosts = posts;
           isLoading = false;
@@ -65,6 +65,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       }
     } catch (e) {
       debugPrint('Lỗi khi tải thông tin người dùng khác: $e');
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
@@ -128,7 +131,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text('@' + username, style: const TextStyle(color: Colors.grey)),
+                    Text('@$username', style: const TextStyle(color: Colors.grey)),
                     const SizedBox(height: 4),
                     Text(bio, style: const TextStyle(color: Colors.white)),
                   ],
@@ -137,7 +140,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             ),
 
             const SizedBox(height: 16),
-              Padding(
+            Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
@@ -151,11 +154,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         if (!Get.isRegistered<MessagesController>()) {
                           Get.put(MessagesController());
                         }
-                        final user = UserModel(
+                        final user = UserChatModel(
                           uid: widget.userId,
-                          name: fullname,
+                          fullname: fullname,
                           username: username,
-                          avatar: avatarUrl,
+                          avatarUrl: avatarUrl,
                         );
 
                         Navigator.push(
@@ -223,6 +226,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                 ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
                                 : null,
                           ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: Colors.grey[800],
+                          child: const Icon(Icons.broken_image, color: Colors.white),
                         );
                       },
                     ),

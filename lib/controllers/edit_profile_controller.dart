@@ -1,13 +1,14 @@
 import 'dart:io';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttergram/utils/snackbar_utils.dart';
 import 'package:image_picker/image_picker.dart';
+
+import '../models/user_model.dart';
 
 class EditProfileController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
   final nameController = TextEditingController();
@@ -21,13 +22,13 @@ class EditProfileController {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return;
 
-    final doc = await _firestore.collection('users').doc(uid).get();
-    final data = doc.data();
-    if (data != null) {
-      nameController.text = data['fullname'] ?? '';
-      userNameController.text = data['username'] ?? '';
-      bioController.text = data['bio'] ?? '';
-      avatarUrl = data['avatar_url'];
+    final map = await UserModelSnapshot.getMapUserModel();
+    final user = map[uid];
+    if (user != null) {
+      nameController.text = user.fullname;
+      userNameController.text = user.username;
+      bioController.text = user.bio;
+      avatarUrl = user.avatarUrl;
       onLoaded();
     }
   }
@@ -65,22 +66,26 @@ class EditProfileController {
         newAvatarUrl = await _uploadAvatar(avatarImage!, uid);
       }
 
-      await _firestore.collection('users').doc(uid).update({
-        'fullname': nameController.text.trim(),
-        'username': userNameController.text.trim(),
-        'bio': bioController.text.trim(),
-        'avatar_url': newAvatarUrl,
-      });
+      final map = await UserModelSnapshot.getMapUserModel();
+      final oldUser = map[uid];
+      if (oldUser == null) return;
+
+      final updatedUser = UserModel(
+        uid: uid,
+        email: oldUser.email,
+        username: userNameController.text.trim(),
+        fullname: nameController.text.trim(),
+        bio: bioController.text.trim(),
+        avatarUrl: newAvatarUrl ?? "",
+        createdAt: oldUser.createdAt,
+        postCount: oldUser.postCount,
+      );
+      await UserModelSnapshot.update(updatedUser);
 
       // Tắt loading
       Navigator.of(context).pop();
       // Hiển thị thông báo thành công
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cập nhật thông tin thành công!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      SnackbarUtils.showSuccess("Cập nhật thông tin thành công!");
 
       Navigator.pop(context, true);
     } catch (e) {
@@ -95,8 +100,4 @@ class EditProfileController {
       );
     }
   }
-
-
-
-
 }

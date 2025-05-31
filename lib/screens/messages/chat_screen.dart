@@ -9,10 +9,10 @@ import 'package:pro_image_editor/plugins/emoji_picker_flutter/emoji_picker_flutt
 import '../../controllers/messages_controller.dart';
 import '../../controllers/profile_controller.dart';
 import '../../models/message_model.dart';
-import '../../models/user_model.dart';
+import '../../models/user_chat_model.dart';
 
 class ChatScreen extends StatefulWidget {
-  final UserModel user;
+  final UserChatModel user;
   const ChatScreen({super.key, required this.user});
 
   @override
@@ -132,7 +132,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.user.name),
+        title: Text(widget.user.fullname),
       ),
       body: Column(
         children: [
@@ -158,11 +158,11 @@ class _ChatScreenState extends State<ChatScreen> {
                         children: [
                           const SizedBox(height: 16),
                           CircleAvatar(
-                            backgroundImage: NetworkImage(widget.user.avatar),
+                            backgroundImage: NetworkImage(widget.user.avatarUrl),
                             radius: 40,
                           ),
                           const SizedBox(height: 8),
-                          Text(widget.user.name,
+                          Text(widget.user.fullname,
                               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                           Text(widget.user.username, style: TextStyle(color: Colors.grey)),
                           const SizedBox(height: 4),

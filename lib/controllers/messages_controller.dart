@@ -3,19 +3,18 @@ import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../models/post_model.dart';
 import '../services/firebase_service.dart';
 import '../models/message_model.dart';
-import '../models/user_model.dart';
+import '../models/user_chat_model.dart';
 
 class MessagesController extends GetxController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
   final FirebaseService _firebaseService = FirebaseService();
 
   User? get currentUser => _auth.currentUser;
@@ -69,30 +68,18 @@ class MessagesController extends GetxController {
 
   Future<void> countUserPosts(String ownerId) async {
     try {
-      final querySnapshot = await _firestore
-          .collection('posts')
-          .where('ownerId', isEqualTo: ownerId)
-          .get();
-
-      userPostCount = querySnapshot.docs.length;
+      final postsMap = await PostModelSnapshot.getMapPostByUser(ownerId);
+      userPostCount = postsMap.length;
       update(['user_post_count']);
     } catch (e) {
-      if (kDebugMode) {
-        print('Lỗi đếm bài viết: $e');
-      }
+      if (kDebugMode) print('Lỗi đếm bài viết: $e');
       userPostCount = 0;
       update(['user_post_count']);
     }
   }
 
   Stream<List<MessageModel>> getMessagesStream(String conversationId) {
-    return _firestore
-        .collection('conversations/$conversationId/messages')
-        .orderBy('createdAt')
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-        .map((doc) => MessageModel.fromMap(doc.data(), id: doc.id))
-        .toList());
+    return MessageModelSnapshot.getMessagesStream(conversationId);
   }
 
   Future<void> sendMessage(
@@ -100,179 +87,30 @@ class MessagesController extends GetxController {
       MessageModel msg, {
         List<String> imageUrls = const [],
       }) async {
-    final ref = _firestore.collection('conversations').doc(conversationId);
-
-    final msgData = {
-      'sender_uid': msg.senderUid,
-      'sender_name': msg.senderName,
-      'sender_avatar': msg.senderAvatar,
-      'receiver_uid': msg.receiverUid,
-      'message': msg.message,
-      'createdAt': Timestamp.fromDate(msg.timestamp),
-      'images': imageUrls,
-    };
-
-    final convData = {
-      'members': [msg.senderUid, msg.receiverUid],
-      'last_message': msg.message.isNotEmpty
-          ? msg.message
-          : (imageUrls.isNotEmpty ? '[Hình ảnh]' : ''),
-      'last_sender_uid': msg.senderUid,
-      'timestamp': Timestamp.fromDate(msg.timestamp),
-    };
-
-    if (!(await ref.get()).exists) await ref.set(convData);
-    await ref.collection('messages').add(msgData);
-    await ref.update(convData);
+    await MessageModelSnapshot.sendMessage(conversationId, msg, imageUrls: imageUrls);
   }
 
   Future<void> deleteMessage(String conversationId, String messageId) async {
-    final messageRef = _firestore.collection('conversations/$conversationId/messages').doc(messageId);
-    final messageSnapshot = await messageRef.get();
-
-    if (messageSnapshot.exists) {
-      final data = messageSnapshot.data();
-      final List<dynamic> imageUrls = data?['images'] ?? [];
-
-      for (String url in imageUrls) {
-        try {
-          final ref = _storage.refFromURL(url);
-          await ref.delete();
-        } catch (e) {
-          if (kDebugMode) {
-            print('Lỗi khi xóa ảnh: $e');
-          }
-        }
-      }
-
-      await messageRef.delete();
-    }
-
-    final lastMessageQuery = await _firestore
-        .collection('conversations/$conversationId/messages')
-        .orderBy('createdAt', descending: true)
-        .limit(1)
-        .get();
-
-    if (lastMessageQuery.docs.isNotEmpty) {
-      final last = lastMessageQuery.docs.first.data();
-      String lastMessageText = last['message'] ?? '';
-      if (lastMessageText.trim().isEmpty) {
-        lastMessageText = '[Hình ảnh]';
-      }
-
-      await _firestore.collection('conversations').doc(conversationId).update({
-        'last_message': lastMessageText,
-        'last_sender_uid': last['sender_uid'],
-        'timestamp': last['createdAt'],
-      });
-    } else {
-      await _firestore.collection('conversations').doc(conversationId).update({
-        'last_message': '',
-        'last_sender_uid': '',
-        'timestamp': null,
-      });
-    }
+    await MessageModelSnapshot.deleteMessage(conversationId, messageId);
   }
 
   Future<void> deleteConversation(String currentUserId, String otherUserId) async {
-    final snapshot = await _firestore
-        .collection('conversations')
-        .where('members', arrayContains: currentUserId)
-        .get();
-
-    for (var doc in snapshot.docs) {
-      final members = List<String>.from(doc['members']);
-      if (members.contains(otherUserId)) {
-        final messages = await doc.reference.collection('messages').get();
-
-        for (var msg in messages.docs) {
-          final data = msg.data();
-          final List<dynamic> imageUrls = data['images'] ?? [];
-
-          for (String url in imageUrls) {
-            try {
-              final ref = _storage.refFromURL(url);
-              await ref.delete();
-            } catch (e) {
-              if (kDebugMode) {
-                print('Lỗi khi xóa ảnh: $e');
-              }
-            }
-          }
-
-          await msg.reference.delete();
-        }
-
-        await doc.reference.delete();
-        break;
-      }
-    }
+    await MessageModelSnapshot.deleteConversation(currentUserId, otherUserId);
   }
 
-  Stream<List<UserModel>> getRecentConversations(String currentUserId) {
-    return _firestore
-        .collection('conversations')
-        .where('members', arrayContains: currentUserId)
-        .snapshots()
-        .asyncMap((snapshot) async {
-      List<UserModel> users = [];
-
-      for (var doc in snapshot.docs) {
-        final members = List<String>.from(doc['members']);
-        final otherUserId = members.firstWhere((id) => id != currentUserId);
-
-        final userDoc = await _firestore.collection('users').doc(otherUserId).get();
-        if (userDoc.exists) {
-          final data = userDoc.data()!;
-          data['last_message'] = doc['last_message'];
-          data['last_sender_uid'] = doc['last_sender_uid'];
-          users.add(UserModel.fromMap(data));
-        }
-      }
-
-      return users;
-    });
+  Stream<List<UserChatModel>> getRecentConversations(String currentUserId) {
+    return UserChatModelSnapshot.getRecentConversations(currentUserId);
   }
 
-  Stream<List<UserModel>> getFilteredSuggestionsStream(String currentUserId) {
-    final controller = StreamController<List<UserModel>>();
-    final subscription = _firestore
-        .collection('conversations')
-        .where('members', arrayContains: currentUserId)
-        .snapshots()
-        .listen((convSnap) async {
-      final existingUserIds = <String>{};
-      for (var doc in convSnap.docs) {
-        final members = List<String>.from(doc['members']);
-        for (var id in members) {
-          if (id != currentUserId) existingUserIds.add(id);
-        }
-      }
-
-      final userSnap = await _firestore.collection('users').get();
-
-      final suggestions = userSnap.docs
-          .map((doc) => UserModel.fromMap(doc.data()))
-          .where((user) =>
-      user.uid != currentUserId && !existingUserIds.contains(user.uid))
-          .toList();
-
-      controller.add(suggestions);
-    });
-
-    controller.onCancel = () {
-      subscription.cancel();
-    };
-
-    return controller.stream;
+  Stream<List<UserChatModel>> getFilteredSuggestionsStream(String currentUserId) {
+    return UserChatModelSnapshot.getFilteredSuggestionsStream(currentUserId);
   }
 
-  Stream<List<UserModel>> getRecentConversationsStream() {
+  Stream<List<UserChatModel>> getRecentConversationsStream() {
     return getRecentConversations(currentUserId);
   }
 
-  Stream<List<UserModel>> getSuggestionsStream() {
+  Stream<List<UserChatModel>> getSuggestionsStream() {
     return getFilteredSuggestionsStream(currentUserId);
   }
 
@@ -317,26 +155,7 @@ class MessagesController extends GetxController {
   }
 
   Future<void> addOrRemoveReaction(String conversationId, String messageId, String reactionKey) async {
-    final currentUserId = FirebaseAuth.instance.currentUser!.uid;
-    final messageRef = FirebaseFirestore.instance
-        .collection('conversations')
-        .doc(conversationId)
-        .collection('messages')
-        .doc(messageId);
-
-    final doc = await messageRef.get();
-    if (!doc.exists) return;
-
-    final data = doc.data()!;
-    Map<String, dynamic> reactions = Map<String, dynamic>.from(data['reactions'] ?? {});
-
-    if (reactions[currentUserId] == reactionKey) {
-      reactions.remove(currentUserId);
-    } else {
-      reactions[currentUserId] = reactionKey;
-    }
-
-    await messageRef.update({'reactions': reactions});
+    await MessageModelSnapshot.addOrRemoveReaction(conversationId, messageId, reactionKey);
   }
 
   String formatTimestamp(DateTime dt) {

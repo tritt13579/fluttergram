@@ -1,17 +1,55 @@
 import 'dart:io';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:fluttergram/layouts/main_layout.dart';
+import 'package:fluttergram/utils/snackbar_utils.dart';
 import 'package:get/get.dart';
-
+import 'package:fluttergram/layouts/main_layout.dart';
+import '../models/user_model.dart';
 import '../screens/auth/login_screen.dart';
 
-class AuthService {
+class ControllerAuth extends GetxController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
+
+  var _mapUser = <String, UserModel>{};
+  var isLoading = false;
+  var isSignedIn = false;
+
+  static ControllerAuth get() => Get.find();
+
+  UserModel? get currentUser => _auth.currentUser?.uid != null ? _mapUser[_auth.currentUser!.uid] : null;
+  bool get loading => isLoading;
+  bool get signedIn => isSignedIn;
+
+  @override
+  Future<void> onReady() async {
+    super.onReady();
+    _checkAuthState();
+  }
+
+  void _checkAuthState() {
+    _auth.authStateChanges().listen((User? user) {
+      isSignedIn = user != null;
+      update(['auth_state']);
+
+      if (user != null) {
+        _loadCurrentUser();
+      } else {
+        _mapUser.clear();
+        update(['user_data']);
+      }
+    });
+  }
+
+  Future<void> _loadCurrentUser() async {
+    if (_auth.currentUser?.uid != null) {
+      _mapUser = await UserModelSnapshot.getMapUserModel();
+      update(['user_data']);
+      UserModelSnapshot.listenDataChange(_mapUser, updateUI: () => update(['user_data']));
+    }
+  }
 
   Future<void> signup({
     required String email,
@@ -20,16 +58,8 @@ class AuthService {
     required String fullname,
     required String bio,
     required File? avatarFile,
-    required BuildContext context,
   }) async {
-    // Hiện vòng tròn loading
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
+    _setLoading(true);
 
     try {
       // Tạo tài khoản Firebase
@@ -45,63 +75,38 @@ class AuthService {
       // Tải avatar lên Firebase Storage
       final avatarUrl = await _uploadAvatar(avatarFile, uid);
 
-      // Chuẩn bị dữ liệu người dùng
-      final userData = {
-        'uid': uid,
-        'email': email,
-        'username': username,
-        'fullname': fullname,
-        'bio': bio,
-        'avatar_url': avatarUrl,
-        'created_at': DateTime.now(),
-        'post_count': 0,
-      };
+      // Tạo UserModel
+      final newUser = UserModel(
+        uid: uid,
+        email: email,
+        username: username,
+        fullname: fullname,
+        bio: bio,
+        avatarUrl: avatarUrl,
+        createdAt: DateTime.now(),
+        postCount: 0,
+      );
 
       // Lưu dữ liệu vào Firestore
-      await _firestore.collection('users').doc(uid).set(userData);
+      await UserModelSnapshot.insert(newUser);
 
-      // Ẩn vòng tròn loading
-      Navigator.of(context).pop();
+      _setLoading(false);
 
       // Hiển thị SnackBar thông báo thành công
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tài khoản đã được tạo thành công! Vui lòng đăng nhập.'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      SnackbarUtils.showSuccess("Tài khoản đã được tạo thành công! Vui lòng đăng nhập.");
 
       // Chuyển hướng sau 1 giây
       Future.delayed(const Duration(seconds: 1), () {
         Get.offAll(() => LoginScreen());
       });
     } on FirebaseAuthException catch (e) {
-      // Ẩn vòng tròn loading nếu có lỗi
-      Navigator.of(context).pop();
-
-      String message;
-
-      if (e.code == 'weak-password') {
-        message = 'Mật khẩu quá yếu.';
-      } else if (e.code == 'email-already-in-use') {
-        message = 'Email này đã được sử dụng.';
-      } else if (e.code == 'invalid-email') {
-        message = 'Email không hợp lệ.';
-      } else {
-        message = 'Đăng ký thất bại.';
-      }
-
-      _showError(context, message);
-    } catch (e, stackTrace) {
-      // Ẩn vòng tròn loading nếu có lỗi bất ngờ
-      Navigator.of(context).pop();
-
-      debugPrint('Lỗi đăng ký: $e');
-      debugPrintStack(stackTrace: stackTrace);
-      _showError(context, 'Vui lòng thử lại sau.');
+      _setLoading(false);
+      _handleAuthError(e);
+    } catch (e) {
+      _setLoading(false);
+      SnackbarUtils.showError("Vui lòng thử lại sau.");
     }
   }
-
 
   Future<String> _uploadAvatar(File? avatarFile, String uid) async {
     const defaultAvatarUrl =
@@ -113,27 +118,19 @@ class AuthService {
       final ref = _storage.ref().child('avatars/$uid/img_$uid.jpg');
       await ref.putFile(avatarFile);
       return await ref.getDownloadURL();
-    } catch (e, stackTrace) {
-      debugPrint('Avatar upload failed: $e');
-      debugPrintStack(stackTrace: stackTrace);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Avatar upload failed: $e');
+      }
       return defaultAvatarUrl;
     }
   }
 
-
   Future<void> signin({
     required String email,
     required String password,
-    required BuildContext context,
   }) async {
-    // Hiện vòng tròn loading
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
+    _setLoading(true);
 
     try {
       await _auth.signInWithEmailAndPassword(
@@ -141,78 +138,75 @@ class AuthService {
         password: password,
       );
 
-      // Ẩn loading trước khi chuyển trang
-      Navigator.of(context).pop();
-
+      _setLoading(false);
       Get.offAll(() => const MainLayout());
     } on FirebaseAuthException catch (e) {
-      Navigator.of(context).pop(); // Ẩn loading
-
-      String message = '';
-      if (e.code == 'invalid-email') {
-        message = 'Địa chỉ email không hợp lệ.';
-      } else if (e.code == 'wrong-password') {
-        message = 'Sai mật khẩu.';
-      } else {
-        message = 'Đăng nhập thất bại. Vui lòng thử lại.';
-      }
-
-      _showError(context, message);
+      _setLoading(false);
+      _handleAuthError(e);
     } catch (e) {
-      Navigator.of(context).pop(); // Ẩn loading nếu có lỗi bất ngờ
-
-      _showError(context, 'Đã xảy ra lỗi.');
+      _setLoading(false);
+      SnackbarUtils.showError("Đã xảy ra lỗi.");
     }
   }
 
-  Future<void> signout({required BuildContext context}) async {
-    bool? confirmSignOut = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
+  Future<void> signout() async {
+    bool? confirmSignOut = await Get.dialog<bool>(
+      AlertDialog(
         backgroundColor: Colors.grey[900],
         title: const Text('Đăng xuất'),
         content: const Text('Bạn chắc chắn muốn đăng xuất không?'),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(false);
-            },
+            onPressed: () => Get.back(result: false),
             child: const Text('Không'),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(true);
-            },
+            onPressed: () => Get.back(result: true),
             child: const Text('Có'),
           ),
         ],
       ),
     );
 
-    if (confirmSignOut != true) {
-      return;
-    }
+    if (confirmSignOut != true) return;
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
-
+    _setLoading(true);
     await _auth.signOut();
-
-    Navigator.of(context).pop();
-
+    _setLoading(false);
     Get.offAll(() => const LoginScreen());
   }
 
+  void _handleAuthError(FirebaseAuthException e) {
+    String message = '';
 
-  void _showError(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    switch (e.code) {
+      case 'weak-password':
+        message = 'Mật khẩu quá yếu.';
+        break;
+      case 'email-already-in-use':
+        message = 'Email này đã được sử dụng.';
+        break;
+      case 'invalid-email':
+        message = 'Email không hợp lệ.';
+        break;
+      case 'wrong-password':
+        message = 'Sai mật khẩu.';
+        break;
+      default:
+        message = 'Đăng nhập thất bại. Vui lòng thử lại.';
+    }
+
+    SnackbarUtils.showError(message);
+  }
+
+  void _setLoading(bool value) {
+    isLoading = value;
+    update(['loading_state']);
+  }
+
+  @override
+  void onClose() {
+    super.onClose();
+    UserModelSnapshot.unsubscribeListenChange();
   }
 }

@@ -7,6 +7,8 @@ import '../../controllers/auth_controller.dart';
 import '../../models/post_model.dart';
 import '../../services/post_service.dart';
 import 'edit_profile_screen.dart';
+import 'package:get/get.dart';
+
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -19,6 +21,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final PostService _postService = PostService(FirebaseService());
+  final controllerAuth = Get.put(ControllerAuth());
 
   List<PostModel> userPosts = [];
 
@@ -172,7 +175,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         foregroundColor: Colors.white,
                       ),
                       onPressed: () {
-                        AuthService().signout(context: context);
+                        controllerAuth.signout();
                       },
                       child: const Text(
                         'Đăng xuất',

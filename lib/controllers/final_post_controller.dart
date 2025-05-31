@@ -1,10 +1,13 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttergram/layouts/main_layout.dart';
 import 'package:get/get.dart';
 
+import '../models/hashtag_model.dart';
+import '../models/user_model.dart';
 import '../services/firebase_service.dart';
 import '../services/post_service.dart';
 import '../utils/snackbar_utils.dart';
@@ -16,6 +19,8 @@ class FinalPostController extends GetxController {
 
   final firebaseService = FirebaseService();
   late final PostService postService;
+  StreamSubscription<List<String>>? _userSub;
+  StreamSubscription<List<String>>? _hashtagSub;
   final FirebaseAuth auth = FirebaseAuth.instance;
 
   final RxString caption = ''.obs;
@@ -69,47 +74,23 @@ class FinalPostController extends GetxController {
   }
 
   Future<void> fetchUsersByPrefix(String prefix) async {
-    try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .orderBy('username')
-          .startAt([prefix])
-          .endAt(['$prefix\uf8ff'])
-          .limit(10)
-          .get();
-
-      filteredUsers.value = snapshot.docs
-          .map((doc) => doc['username']?.toString() ?? '')
-          .where((username) => username.isNotEmpty)
-          .toList();
-    } catch (e) {
-      if (kDebugMode) {
-        print('Lỗi khi tìm user theo prefix: $e');
-      }
+    _userSub?.cancel();
+    _userSub = UserModelSnapshot().usernamesByPrefix(prefix).listen((users) {
+      filteredUsers.value = users;
+    }, onError: (e) {
+      if (kDebugMode) print('Lỗi khi tìm user theo prefix: $e');
       filteredUsers.clear();
-    }
+    });
   }
 
   Future<void> fetchHashtagsByPrefix(String prefix) async {
-    try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('hashtags')
-          .orderBy(FieldPath.documentId)
-          .startAt([prefix])
-          .endAt(['$prefix\uf8ff'])
-          .limit(10)
-          .get();
-
-      filteredHashtags.value = snapshot.docs
-          .map((doc) => doc.id)
-          .where((tag) => tag.isNotEmpty)
-          .toList();
-    } catch (e) {
-      if (kDebugMode) {
-        print('Lỗi khi tìm hashtag theo prefix: $e');
-      }
+    _hashtagSub?.cancel();
+    _hashtagSub = HashtagModelSnapshot.hashtagsByPrefix(prefix).listen((tags) {
+      filteredHashtags.value = tags;
+    }, onError: (e) {
+      if (kDebugMode) print('Lỗi khi tìm hashtag theo prefix: $e');
       filteredHashtags.clear();
-    }
+    });
   }
 
   void _checkForSuggestions() {
@@ -174,17 +155,15 @@ class FinalPostController extends GetxController {
     try {
       isLoading.value = true;
 
-      final userDoc = await firebaseService.firestore.collection('users').doc(userId).get();
-
-      if (!userDoc.exists) {
+      final map = await UserModelSnapshot.getMapUserModel();
+      final user = map[userId];
+      if (user == null) {
         SnackbarUtils.showError('Không tìm thấy thông tin người dùng');
         isLoading.value = false;
         return;
       }
-
-      final userData = userDoc.data() as Map<String, dynamic>;
-      final String? username = userData['username'];
-      final String? avatarUrl = userData['avatar_url'];
+      final String username = user.username;
+      final String avatarUrl = user.avatarUrl;
 
       final String captionText = captionController.text.trim();
       final List<String> hashtags = extractedHashtags
@@ -198,7 +177,6 @@ class FinalPostController extends GetxController {
         isLoading.value = false;
         return;
       }
-
 
       await postService.createPost(
         userId: userId!,
@@ -220,6 +198,8 @@ class FinalPostController extends GetxController {
 
   @override
   void onClose() {
+    _userSub?.cancel();
+    _hashtagSub?.cancel();
     captionController.removeListener(_handleCaptionChanges);
     captionController.dispose();
     captionFocusNode.dispose();

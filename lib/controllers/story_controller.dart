@@ -1,7 +1,7 @@
 import 'dart:io';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
+import '../models/user_model.dart';
 import '../services/firebase_service.dart';
 import '../models/story_model.dart';
 
@@ -13,99 +13,73 @@ class StoryController extends GetxController {
   final isLoading = false.obs;
 
   Future<void> loadLikeStatus(String storyId) async {
-    final doc = await _firebaseService.firestore.collection('stories').doc(storyId).get();
-    likes[storyId] = RxInt(doc.data()?['likeCount'] ?? 0);
+    final likeCount = await StoryModelSnapshot.fetchLikeCount(storyId);
+    likes[storyId] = RxInt(likeCount);
 
     final userId = _firebaseService.currentUser?.uid;
     if (userId == null) return;
-    final likeDoc = await _firebaseService.firestore
-        .collection('stories')
-        .doc(storyId)
-        .collection('likes')
-        .doc(userId)
-        .get();
-    liked[storyId] = RxBool(likeDoc.exists);
+    final userLiked = await StoryModelSnapshot.hasUserLiked(storyId, userId);
+    liked[storyId] = RxBool(userLiked);
   }
 
   Future<void> toggleLike(String storyId) async {
     final userId = _firebaseService.currentUser?.uid;
     if (userId == null) return;
-    final docRef = _firebaseService.firestore.collection('stories').doc(storyId);
-    final likeRef = docRef.collection('likes').doc(userId);
+    final isLiked = liked[storyId]?.value == true;
+    await StoryModelSnapshot.toggleLike(storyId, userId, isLiked: isLiked);
 
-    if (liked[storyId]?.value == true) {
-      await likeRef.delete();
-      await docRef.update({'likeCount': FieldValue.increment(-1)});
-      likes[storyId]?.value = (likes[storyId]?.value ?? 1) - 1;
-      liked[storyId]?.value = false;
-    } else {
-      await likeRef.set({'userId': userId, 'timestamp': FieldValue.serverTimestamp()});
-      await docRef.update({'likeCount': FieldValue.increment(1)});
-      likes[storyId]?.value = (likes[storyId]?.value ?? 0) + 1;
-      liked[storyId]?.value = true;
-    }
+    final likeCount = await StoryModelSnapshot.fetchLikeCount(storyId);
+    likes[storyId]?.value = likeCount;
+    liked[storyId]?.value = !isLiked;
   }
 
   Future<Map<String, dynamic>> fetchCurrentUserInfo() async {
     final user = _firebaseService.currentUser;
     if (user == null) throw Exception("Chưa đăng nhập");
 
-    final doc = await _firebaseService.firestore.collection('users').doc(user.uid).get();
+    final userMap = await UserModelSnapshot.getMapUserModel();
+    final userModel = userMap[user.uid];
+    if (userModel == null) throw Exception("Không tìm thấy user");
 
-    final data = doc.data()!;
     return {
-      'avatar': data['avatar_url'] ?? '',
-      'username': data['username'] ?? '',
+      'avatar': userModel.avatarUrl,
+      'username': userModel.username,
       'isCurrentUser': true,
     };
   }
 
   Future<List<StoryModel>> getStoriesForUser(String userId) async {
-    return await StoryModel.fetchStoriesForUser(userId);
+    return await StoryModelSnapshot.fetchStoriesForUser(userId);
   }
 
   Future<StoryModel?> getLatestStoryForUser(String userId) async {
-    return await StoryModel.fetchLatestStoryForUser(userId);
+    return await StoryModelSnapshot.fetchLatestStoryForUser(userId);
   }
 
   Future<bool> hasActiveStoryForUser(String userId) async {
-    return await StoryModel.hasActiveStory(userId);
+    return await StoryModelSnapshot.hasActiveStory(userId);
   }
 
   Future<void> uploadAndSaveStory(File image) async {
     isLoading.value = true;
-    try{
+    try {
       final user = _firebaseService.currentUser;
       if (user == null) return;
 
-      final userDoc = await _firebaseService.getDocument(
-        collection: 'users',
-        documentId: user.uid,
+      final userMap = await UserModelSnapshot.getMapUserModel();
+      final userModel = userMap[user.uid];
+      if (userModel == null) return;
+
+      await StoryModelSnapshot.uploadAndCreateStory(
+        image: image,
+        user: userModel,
       );
-
-      final userData = userDoc.data() as Map<String, dynamic>?;
-
-      final path = 'stories/${user.uid}/${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final imageUrl = await _firebaseService.uploadImage(image: image, path: path);
-
-      final story = StoryModel(
-        id: '',
-        userId: user.uid,
-        imageUrl: imageUrl,
-        createdAt: DateTime.now(),
-        username: userData?['username'] ?? '',
-        userAvatar: userData?['avatar_url'] ?? '',
-      );
-
-      await _firebaseService.createDocument(
-        collection: 'stories',
-        data: story.toMap(),
-      );
-    } finally {isLoading.value = false;}
-
+    } finally {
+      isLoading.value = false;
+    }
   }
 
-  Future<QuerySnapshot<Map<String, dynamic>>> fetchAllUsers() async {
-    return await _firebaseService.firestore.collection('users').get();
+  Future<List<UserModel>> fetchAllUsers() async {
+    return await UserModelSnapshot.fetchAllUsers();
   }
 }

@@ -2,15 +2,15 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../models/hashtag_model.dart';
 import '../models/post_model.dart';
+import '../models/user_model.dart';
 import '../services/post_service.dart';
 import '../services/firebase_service.dart';
 
 enum SearchMode { initial, users, hashtagSuggestions, hashtagPosts }
 
 class SearchFlutterController extends GetxController {
-  late final PostService _postService;
-
   final TextEditingController textEditingController = TextEditingController();
   final RxString searchQuery = ''.obs;
   final RxList<PostModel> trendingPosts = <PostModel>[].obs;
@@ -28,7 +28,6 @@ class SearchFlutterController extends GetxController {
     if (!Get.isRegistered<PostService>()) {
       Get.lazyPut<PostService>(() => PostService(Get.find<FirebaseService>()));
     }
-    _postService = Get.find<PostService>();
     textEditingController.addListener(_onSearchChanged);
     loadTrendingPosts();
   }
@@ -52,12 +51,8 @@ class SearchFlutterController extends GetxController {
     });
   }
 
-  Future<QuerySnapshot<Map<String, dynamic>>> fetchUsers() {
-    return FirebaseFirestore.instance
-        .collection('users')
-        .where('username', isGreaterThanOrEqualTo: searchQuery.value)
-        .where('username', isLessThanOrEqualTo: '${searchQuery.value}\uf8ff')
-        .get();
+  Future<List<UserModel>> fetchUsers() {
+    return UserModelSnapshot.fetchUserModelsByPrefix(searchQuery.value);
   }
 
   Future<void> _fetchHashtagSuggestions(String query) async {
@@ -67,7 +62,7 @@ class SearchFlutterController extends GetxController {
     }
     isLoading.value = true;
     final String keyword = query.substring(1);
-    final results = await _postService.searchHashtags(keyword);
+    final results = await HashtagModelSnapshot.hashtagsByPrefix(keyword).first;
     hashtagSuggestions.assignAll(results.map((tag) => '#$tag'));
     isLoading.value = false;
   }
@@ -81,8 +76,8 @@ class SearchFlutterController extends GetxController {
     isLoading.value = true;
     hashtagPostsResults.clear();
 
-    final results = await _postService.getPostsByHashtag(hashtag);
-    hashtagPostsResults.assignAll(results);
+    final postMap = await PostModelSnapshot.getMapPostByHashtag(hashtag);
+    hashtagPostsResults.assignAll(postMap.values.toList());
 
     searchMode.value = SearchMode.hashtagPosts;
     isLoading.value = false;
@@ -96,7 +91,8 @@ class SearchFlutterController extends GetxController {
 
   Future<void> loadTrendingPosts() async {
     isLoading.value = true;
-    final posts = await _postService.getTrendingPosts(limit: 20);
+    final postMap = await PostModelSnapshot.getMapPost();
+    final posts = postMap.values.take(20).toList();
     trendingPosts.assignAll(posts);
     isLoading.value = false;
   }

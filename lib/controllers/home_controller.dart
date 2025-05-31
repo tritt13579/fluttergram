@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
@@ -5,9 +6,11 @@ import 'package:flutter/material.dart';
 import '../../models/post_model.dart';
 import '../../services/firebase_service.dart';
 import '../../services/post_service.dart';
+import '../models/comment_model.dart';
 import '../models/user_model.dart';
 import '../screens/profile/user_profile_screen.dart';
 import '../utils/snackbar_utils.dart';
+import '../widgets/comment_bottom_sheet.dart';
 import 'bottom_nav_controller.dart';
 
 class HomeController extends GetxController {
@@ -17,7 +20,11 @@ class HomeController extends GetxController {
   final RxList<PostModel> posts = <PostModel>[].obs;
   final RxBool isLoading = true.obs;
   final RxBool hasMorePosts = true.obs;
+  final RxList<CommentModel> comments = <CommentModel>[].obs;
+  final RxBool isLoadingComments = false.obs;
+  final RxBool hasMoreComments = true.obs;
   final TextEditingController commentController = TextEditingController();
+  DocumentSnapshot? lastCommentDoc;
   final Rx<UserModel?> currentUser = Rx<UserModel?>(null);
   final Rx<Map<String, bool>> showHeartMap = Rx<Map<String, bool>>({});
 
@@ -38,20 +45,8 @@ class HomeController extends GetxController {
 
   Future<void> loadCurrentUserData() async {
     try {
-      final userDoc = await firebaseService.firestore
-          .collection('users')
-          .doc(currentUserId)
-          .get();
-
-      if (userDoc.exists) {
-        final userData = userDoc.data() as Map<String, dynamic>;
-        currentUser.value = UserModel.fromMap({
-          'uid': currentUserId,
-          'fullname': userData['fullname'] ?? 'User',
-          'username': userData['username'] ?? 'user',
-          'avatar_url': userData['avatar_url'],
-        });
-      }
+      final userMap = await UserModelSnapshot.getMapUserModel();
+      currentUser.value = userMap[currentUserId];
     } catch (e) {
       debugPrint('Error loading current user data: $e');
     }
@@ -61,7 +56,8 @@ class HomeController extends GetxController {
     isLoading.value = true;
 
     try {
-      final newPosts = await postService.getFeedPosts(limit: 10);
+      final postMap = await PostModelSnapshot.getMapPost();
+      final newPosts = postMap.values.toList();
       posts.clear();
       posts.addAll(newPosts);
       hasMorePosts.value = newPosts.length == 10;
@@ -90,16 +86,11 @@ class HomeController extends GetxController {
         return;
       }
 
-      final lastDocSnapshot = await firebaseService.firestore
-          .collection('posts')
-          .doc(lastPost.id)
-          .get();
-
-      final newPosts = await postService.getFeedPosts(
+      final postMap = await PostModelSnapshot.getMapPostAfter(
+        lastCreatedAt: lastPost.createdAt!,
         limit: 10,
-        lastDocument: lastDocSnapshot,
       );
-
+      final newPosts = postMap.values.toList();
       posts.addAll(newPosts);
       hasMorePosts.value = newPosts.length == 10;
 
@@ -220,7 +211,104 @@ class HomeController extends GetxController {
     });
   }
 
+  Future<void> loadComments(String postId) async {
+    isLoadingComments.value = true;
+    comments.clear();
+    lastCommentDoc = null;
+    hasMoreComments.value = true;
+    try {
+      final commentsList = await CommentModelSnapshot.getCommentsForPost(
+        postId: postId,
+        limit: 20,
+      );
+      comments.assignAll(commentsList);
+
+      if (commentsList.isNotEmpty) {
+        lastCommentDoc = await CommentModelSnapshot.getCommentDoc(
+          postId: postId,
+          commentId: commentsList.last.id,
+        );
+      }
+      hasMoreComments.value = commentsList.length == 20;
+    } catch (e) {
+      debugPrint('Error loading comments: $e');
+    } finally {
+      isLoadingComments.value = false;
+    }
+  }
+
+  Future<void> loadMoreComments(String postId) async {
+    if (!hasMoreComments.value ||
+        isLoadingComments.value ||
+        lastCommentDoc == null) {
+      return;
+    }
+
+    isLoadingComments.value = true;
+    try {
+      final commentsList = await CommentModelSnapshot.getCommentsForPost(
+        postId: postId,
+        limit: 20,
+        lastDocument: lastCommentDoc,
+      );
+      comments.addAll(commentsList);
+
+      if (commentsList.isNotEmpty) {
+        lastCommentDoc = await CommentModelSnapshot.getCommentDoc(
+          postId: postId,
+          commentId: commentsList.last.id,
+        );
+      }
+      hasMoreComments.value = commentsList.length == 20;
+    } catch (e) {
+      debugPrint('Error loading more comments: $e');
+    } finally {
+      isLoadingComments.value = false;
+    }
+  }
+
+  Future<void> addComment(String postId) async {
+    if (currentUserId == null || commentController.text.trim().isEmpty) return;
+    final text = commentController.text.trim();
+    commentController.clear();
+    try {
+      final userMap = await UserModelSnapshot.getMapUserModel();
+      final user = userMap[currentUserId];
+      String? username = user?.username;
+      String? userAvatar = user?.avatarUrl;
+
+      await CommentModelSnapshot.addComment(
+        postId: postId,
+        userId: currentUserId!,
+        text: text,
+        username: username,
+        userAvatar: userAvatar,
+      );
+
+      loadComments(postId);
+
+      final index = posts.indexWhere((p) => p.id == postId);
+      if (index != -1) {
+        final updatedPost = posts[index].copyWith(
+          commentCount: posts[index].commentCount + 1,
+        );
+        posts[index] = updatedPost;
+      }
+    } catch (e) {
+      SnackbarUtils.showError('Không thể thêm bình luận: $e');
+    }
+  }
+
   void navigateToComments(String postId) {
+    loadComments(postId);
+    Get.bottomSheet(
+      CommentBottomSheet(
+        postId: postId,
+        controller: this,
+      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.black,
+    );
     // comment
   }
 
@@ -234,5 +322,4 @@ class HomeController extends GetxController {
       Get.to(() => UserProfileScreen(userId: userId));
     }
   }
-
 }

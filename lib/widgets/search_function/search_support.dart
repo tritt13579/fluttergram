@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/searchfl_controller.dart';
 import '../../models/post_model.dart';
+import '../../models/user_model.dart';
 import '../../widgets/post_item.dart';
 import '../../controllers/profile_controller.dart';
 import '../../screens/profile/post_profile_screen.dart';
@@ -11,10 +12,10 @@ Widget buildUserResults(SearchFlutterController controller) {
     return buildGridPlaceholder(controller.trendingPosts);
   }
 
-  return FutureBuilder(
+  return FutureBuilder<List<UserModel>>(
     future: controller.fetchUsers(),
     builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting && controller.userResults.isEmpty) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
         return const Center(child: CircularProgressIndicator());
       }
       if (snapshot.hasError) {
@@ -22,32 +23,31 @@ Widget buildUserResults(SearchFlutterController controller) {
             child: Text('Lỗi: ${snapshot.error}',
                 style: const TextStyle(color: Colors.white)));
       }
-      if (!snapshot.hasData || (snapshot.data as dynamic).docs.isEmpty) {
+      if (!snapshot.hasData || snapshot.data!.isEmpty) {
         return const Center(
           child: Text('Không tìm thấy người dùng',
               style: TextStyle(color: Colors.white)),
         );
       }
 
-      final users = (snapshot.data as dynamic).docs;
+      final users = snapshot.data!;
       return ListView.builder(
         itemCount: users.length,
         itemBuilder: (context, index) {
-          final user = users[index].data();
+          final user = users[index];
           return ListTile(
-            leading: (user['avatar_url'] != null &&
-                user['avatar_url'].toString().isNotEmpty)
+            leading: (user.avatarUrl.isNotEmpty)
                 ? CircleAvatar(
-              backgroundImage: NetworkImage(user['avatar_url']),
+              backgroundImage: NetworkImage(user.avatarUrl),
             )
                 : CircleAvatar(
               backgroundColor: Colors.grey,
               child: const Icon(Icons.person, color: Colors.white),
             ),
-            title: Text(user['username'] ?? '',
+            title: Text(user.username,
                 style: const TextStyle(color: Colors.white)),
             onTap: () {
-              String userId = user['uid'];
+              String userId = user.uid;
               if (!Get.isRegistered<ProfileController>()) {
                 Get.put(ProfileController());
               }

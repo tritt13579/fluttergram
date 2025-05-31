@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:fluttergram/models/user_chat_model.dart';
 import 'package:get/get.dart';
 import '../../controllers/messages_controller.dart';
-import '../../models/user_model.dart';
 import '../profile/edit_profile_screen.dart';
 import 'chat_screen.dart';
 
@@ -57,7 +57,7 @@ class MessagesScreen extends StatelessWidget {
   }
 
   Widget _buildRecentMessages(MessagesController controller, BuildContext context) {
-    return StreamBuilder<List<UserModel>>(
+    return StreamBuilder<List<UserChatModel>>(
       stream: controller.getRecentConversationsStream(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -89,7 +89,7 @@ class MessagesScreen extends StatelessWidget {
   }
 
   Widget _buildSuggestions(MessagesController controller, BuildContext context) {
-    return StreamBuilder<List<UserModel>>(
+    return StreamBuilder<List<UserChatModel>>(
       stream: controller.getSuggestionsStream(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -130,7 +130,7 @@ class MessagesScreen extends StatelessWidget {
 
   Widget _buildUserSection({
     required String title,
-    required List<UserModel> users,
+    required List<UserChatModel> users,
     required BuildContext context,
     MessagesController? controller,
     bool showMenu = false,
@@ -161,17 +161,17 @@ class MessagesScreen extends StatelessWidget {
 
 // Hàm tạo ListTile cho từng user
   Widget _buildUserTile({
-    required UserModel user,
+    required UserChatModel user,
     required BuildContext context,
     MessagesController? controller,
     required bool showMenu,
   }) {
     return ListTile(
       leading: CircleAvatar(
-        backgroundImage: NetworkImage(user.avatar),
+        backgroundImage: NetworkImage(user.avatarUrl),
         radius: 24,
       ),
-      title: Text(user.name),
+      title: Text(user.fullname),
       subtitle: Text(
         showMenu
             ? _getLastMessageText(user, controller)
@@ -191,18 +191,18 @@ class MessagesScreen extends StatelessWidget {
     );
   }
 
-  String _getLastMessageText(UserModel user, MessagesController? controller) {
+  String _getLastMessageText(UserChatModel user, MessagesController? controller) {
     if (user.lastMessage != null && user.lastMessage!.trim().isNotEmpty) {
       if (user.lastSenderUid == controller?.currentUserId) {
         return 'Bạn: ${user.lastMessage}';
       } else {
-        return '${user.name}: ${user.lastMessage}';
+        return '${user.fullname}: ${user.lastMessage}';
       }
     }
     return 'Nhấn vào để chat';
   }
 
-  Widget _buildPopupMenu(BuildContext context, UserModel user, MessagesController? controller) {
+  Widget _buildPopupMenu(BuildContext context, UserChatModel user, MessagesController? controller) {
     return PopupMenuButton<String>(
       icon: const Icon(Icons.more_vert),
       onSelected: (value) async {

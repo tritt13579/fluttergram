@@ -4,6 +4,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
+import '../models/comment_model.dart';
 import '../models/post_model.dart';
 import 'firebase_service.dart';
 
@@ -470,5 +471,73 @@ class PostService {
         .doc(userId)
         .snapshots()
         .map((snapshot) => snapshot.exists);
+  }
+
+  Future<List<CommentModel>> getPostComments(
+      String postId, {
+      int limit = 20,
+        DocumentSnapshot? lastDocument,
+      }) async {
+    try {
+      Query query = firebaseService.firestore
+          .collection('posts')
+          .doc(postId)
+          .collection('comments')
+          .orderBy('createdAt', descending: true)
+          .limit(limit);
+
+      if (lastDocument != null) {
+        query = query.startAfterDocument(lastDocument);
+      }
+
+      final snapshot = await query.get();
+
+      return snapshot.docs
+          .map((doc) => CommentModel.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      debugPrint('Error getting post comments: $e');
+      return [];
+    }
+  }
+
+  Future<String> addComment({
+    required String postId,
+    required String userId,
+    required String text,
+    String? username,
+    String? userAvatar,
+  }) async {
+    try {
+      final commentRef = firebaseService.firestore
+          .collection('posts')
+          .doc(postId)
+          .collection('comments')
+          .doc();
+
+      final comment = CommentModel(
+        id: commentRef.id,
+        postId: postId,
+        userId: userId,
+        text: text,
+        createdAt: DateTime.now(),
+        username: username,
+        userAvatar: userAvatar,
+      );
+
+      final batch = firebaseService.firestore.batch();
+
+      batch.set(commentRef, comment.toMap());
+      batch.update(
+        firebaseService.firestore.collection('posts').doc(postId),
+        {'commentCount': FieldValue.increment(1)},
+      );
+
+      await batch.commit();
+      return commentRef.id;
+    } catch (e) {
+      debugPrint('Error adding comment: $e');
+      rethrow;
+    }
   }
 }
