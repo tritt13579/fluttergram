@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 
 import '../../controllers/home_controller.dart';
 import '../../widgets/post_item.dart';
-import '../../widgets/stories_section.dart';
+import '../../widgets/story/stories_section.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});

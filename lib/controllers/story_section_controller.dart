@@ -2,7 +2,6 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import '../../controllers/story_controller.dart';
 
-
 class StoriesSectionController extends GetxController {
   final StoryController storyController;
 
@@ -39,7 +38,9 @@ class StoriesSectionController extends GetxController {
 
       final List<Map<String, dynamic>> allStoryItems = [];
 
-      final currentUserStories = await storyController.getAllCurrentUserStories();
+      final currentUserStories = currentUser != null
+          ? await storyController.getStoriesForUser(currentUser)
+          : [];
       if (currentUserStories.isNotEmpty) {
         allStoryItems.add({
           'avatar': currentUserInfo['avatar'],
@@ -54,7 +55,7 @@ class StoriesSectionController extends GetxController {
       for (final doc in usersSnapshot.docs) {
         final userId = doc.id;
         if (userId == currentUser) continue;
-        final stories = await storyController.getAllCurrentUserStoriesForUser(userId);
+        final stories = await storyController.getStoriesForUser(userId);
         if (stories.isNotEmpty) {
           allStoryItems.add({
             'avatar': doc['avatar_url'] ?? '',
