@@ -5,8 +5,6 @@ import 'package:get/get.dart';
 import '../models/hashtag_model.dart';
 import '../models/post_model.dart';
 import '../models/user_model.dart';
-import '../services/post_service.dart';
-import '../services/firebase_service.dart';
 
 enum SearchMode { initial, users, hashtagSuggestions, hashtagPosts }
 
@@ -25,9 +23,6 @@ class SearchFlutterController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    if (!Get.isRegistered<PostService>()) {
-      Get.lazyPut<PostService>(() => PostService(Get.find<FirebaseService>()));
-    }
     textEditingController.addListener(_onSearchChanged);
     loadTrendingPosts();
   }
@@ -88,12 +83,13 @@ class SearchFlutterController extends GetxController {
     searchMode.value = SearchMode.users;
   }
 
-
   Future<void> loadTrendingPosts() async {
     isLoading.value = true;
     final postMap = await PostModelSnapshot.getMapPost();
-    final posts = postMap.values.take(20).toList();
-    trendingPosts.assignAll(posts);
+    final posts = postMap.values
+        .toList()
+      ..sort((a, b) => b.likeCount.compareTo(a.likeCount));
+    trendingPosts.assignAll(posts.take(20));
     isLoading.value = false;
   }
 

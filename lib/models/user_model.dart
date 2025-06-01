@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:fluttergram/models/post_model.dart';
 
 class UserModel {
@@ -80,7 +81,9 @@ class UserModelSnapshot {
       }
       return {};
     } catch (e) {
-      print('Error getting user data: $e');
+      if (kDebugMode) {
+        print('Error getting user data: $e');
+      }
       return {};
     }
   }
@@ -132,7 +135,9 @@ class UserModelSnapshot {
     try {
       await _firestore.collection('users').doc(user.uid).set(user.toMap());
     } catch (e) {
-      print('Error inserting user: $e');
+      if (kDebugMode) {
+        print('Error inserting user: $e');
+      }
       rethrow;
     }
   }
@@ -141,7 +146,9 @@ class UserModelSnapshot {
     try {
       await _firestore.collection('users').doc(user.uid).update(user.toMap());
     } catch (e) {
-      print('Error updating user: $e');
+      if (kDebugMode) {
+        print('Error updating user: $e');
+      }
       rethrow;
     }
   }
@@ -150,12 +157,13 @@ class UserModelSnapshot {
     try {
       await _firestore.collection('users').doc(uid).delete();
     } catch (e) {
-      print('Error deleting user: $e');
+      if (kDebugMode) {
+        print('Error deleting user: $e');
+      }
       rethrow;
     }
   }
 
-  /// Get user profile and their posts (returns postCount and List<PostModel>)
   static Future<ProfileResult> getUserProfileAndPosts(String uid) async {
     // Lấy user
     final userDoc = await _firestore.collection('users').doc(uid).get();

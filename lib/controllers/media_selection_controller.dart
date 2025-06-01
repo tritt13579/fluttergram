@@ -21,11 +21,6 @@ class MediaSelectionController extends GetxController {
     if (result.isAuth) {
       await _loadAlbums();
     } else {
-      Get.snackbar(
-        'Permission Denied',
-        'Please allow access to your media library',
-        snackPosition: SnackPosition.BOTTOM,
-      );
       SnackbarUtils.showPermissionDenied(message: "Please allow access to your media library");
     }
   }

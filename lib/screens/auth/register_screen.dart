@@ -18,7 +18,6 @@ class RegisterScreen extends StatelessWidget {
   final TextEditingController _bioController = TextEditingController();
   final ControllerAuth controllerAuth = Get.put(ControllerAuth());
 
-  // Use a ValueNotifier to manage avatar in stateless
   final ValueNotifier<File?> _avatarFile = ValueNotifier<File?>(null);
 
   Future<void> _pickAvatar() async {

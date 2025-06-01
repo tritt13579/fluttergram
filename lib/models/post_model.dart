@@ -187,6 +187,58 @@ class PostModelSnapshot {
     }
   }
 
+  static Future<PostModel?> getPostById(String postId) async {
+    try {
+      final snapshot = await _firebaseService.firestore
+          .collection('posts')
+          .doc(postId)
+          .get();
+      if (!snapshot.exists) return null;
+      return PostModel.fromFirestore(snapshot);
+    } catch (e) {
+      debugPrint('Error getting post by id: $e');
+      return null;
+    }
+  }
+
+  static Future<List<String>> getLikedUserIds({
+    required String postId,
+    int limit = 20,
+    DocumentSnapshot? lastDocument,
+  }) async {
+    try {
+      Query query = _firebaseService.firestore
+          .collection('posts')
+          .doc(postId)
+          .collection('likes')
+          .orderBy('timestamp', descending: true)
+          .limit(limit);
+
+      if (lastDocument != null) {
+        query = query.startAfterDocument(lastDocument);
+      }
+
+      final snapshot = await query.get();
+      return snapshot.docs.map((doc) => doc.id).toList();
+    } catch (e) {
+      debugPrint('Error getting liked user ids: $e');
+      return [];
+    }
+  }
+
+  static Stream<bool> likeStatusStream({
+    required String postId,
+    required String userId,
+  }) {
+    return _firebaseService.firestore
+        .collection('posts')
+        .doc(postId)
+        .collection('likes')
+        .doc(userId)
+        .snapshots()
+        .map((snapshot) => snapshot.exists);
+  }
+
   // Listen to data changes
   static void listenDataChange(Map<String, PostModel> maps, {Function()? updateUI}) {
     _subscription = _firebaseService.firestore

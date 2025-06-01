@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:fluttergram/utils/snackbar_utils.dart';
 import 'package:image_picker/image_picker.dart';
@@ -18,6 +18,7 @@ class EditProfileController extends GetxController {
 
   Rx<File?> avatarImage = Rx<File?>(null);
   RxString avatarUrl = "".obs;
+  RxBool isLoading = false.obs;
 
   @override
   void onClose() {
@@ -56,18 +57,13 @@ class EditProfileController extends GetxController {
     return await ref.getDownloadURL();
   }
 
-  Future<void> saveProfile(BuildContext context) async {
+  /// Use GetX instead of BuildContext! No context needed, no async context bug.
+  Future<void> saveProfile() async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return;
 
-    // Hiển thị loading
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
+    isLoading.value = true;
+    update();
 
     try {
       String? newAvatarUrl = avatarUrl.value.isNotEmpty ? avatarUrl.value : null;
@@ -77,7 +73,12 @@ class EditProfileController extends GetxController {
 
       final map = await UserModelSnapshot.getMapUserModel();
       final oldUser = map[uid];
-      if (oldUser == null) return;
+      if (oldUser == null) {
+        isLoading.value = false;
+        update();
+        SnackbarUtils.showError("Không tìm thấy user!");
+        return;
+      }
 
       final updatedUser = UserModel(
         uid: uid,
@@ -91,22 +92,15 @@ class EditProfileController extends GetxController {
       );
       await UserModelSnapshot.update(updatedUser);
 
-      // Tắt loading
-      Navigator.of(context).pop();
-      // Hiển thị thông báo thành công
+      isLoading.value = false;
+      update();
       SnackbarUtils.showSuccess("Cập nhật thông tin thành công!");
 
-      Navigator.pop(context, true);
+      Get.back(result: true);
     } catch (e) {
-      // Tắt loading nếu có lỗi
-      Navigator.of(context).pop();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Đã xảy ra lỗi: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      isLoading.value = false;
+      update();
+      SnackbarUtils.showError('Đã xảy ra lỗi: $e');
     }
   }
 }

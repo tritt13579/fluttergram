@@ -71,7 +71,7 @@ class EditProfileScreen extends StatelessWidget {
                     foregroundColor: Colors.black,
                   ),
                   onPressed: () {
-                    controller.saveProfile(context);
+                    controller.saveProfile();
                   },
                   child: const Text(
                     'Cập nhật',

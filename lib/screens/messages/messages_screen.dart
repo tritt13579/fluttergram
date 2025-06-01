@@ -68,7 +68,6 @@ class MessagesScreen extends StatelessWidget {
           return _buildEmptyMessage('Các đoạn tin nhắn sẽ hiển thị ở đây sau khi bạn gửi hoặc nhận tin nhắn.');
         }
 
-        // Lọc theo từ khóa tìm kiếm nếu có
         final filteredData = controller.searchKeyword.isEmpty
             ? data
             : data.where((user) => user.username.toLowerCase().contains(controller.searchKeyword)).toList();
@@ -100,7 +99,6 @@ class MessagesScreen extends StatelessWidget {
           return const SizedBox.shrink();
         }
 
-        // Lọc theo từ khóa tìm kiếm nếu có
         final filteredSuggestions = controller.searchKeyword.isEmpty
             ? data
             : data.where((user) => user.username.toLowerCase().contains(controller.searchKeyword)).toList();

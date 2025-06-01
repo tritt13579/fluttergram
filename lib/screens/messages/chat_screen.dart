@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -10,6 +9,7 @@ import '../../controllers/messages_controller.dart';
 import '../../controllers/profile_controller.dart';
 import '../../models/message_model.dart';
 import '../../models/user_chat_model.dart';
+import '../../utils/snackbar_utils.dart';
 
 class ChatScreen extends StatelessWidget {
   final UserChatModel user;
@@ -44,7 +44,7 @@ class ChatScreen extends StatelessWidget {
     });
   }
 
-  Future<void> _sendMessage(BuildContext context, String conversationId, String currentUserId) async {
+  Future<void> _sendMessage(String conversationId, String currentUserId) async {
     final messageText = _messageController.text.trim();
     final selectedImages = _controller.selectedImages;
     if (messageText.isEmpty && selectedImages.isEmpty) return;
@@ -75,15 +75,13 @@ class ChatScreen extends StatelessWidget {
       _messageController.clear();
       _controller.clearImages();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gửi tin nhắn thất bại: $e'), backgroundColor: Colors.red),
-      );
+      SnackbarUtils.showError('Gửi tin nhắn thất bại: $e');
     } finally {
       _controller.setUploading(false);
     }
   }
 
-  Future<void> _pickImages(BuildContext context) async {
+  Future<void> _pickImages() async {
     final picker = ImagePicker();
     final List<XFile> files = await picker.pickMultiImage();
 
@@ -97,47 +95,39 @@ class ChatScreen extends StatelessWidget {
         if (fileSize <= 3 * 1024 * 1024) {
           validImages.add(imageFile);
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Ảnh "${file.name}" vượt quá 3MB và đã bị bỏ qua.'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          SnackbarUtils.showWarning('Ảnh "${file.name}" vượt quá 3MB và đã bị bỏ qua.');
         }
       }
       _controller.addImages(validImages);
     }
   }
 
-  void _showReactionPicker(BuildContext context, MessageModel msg, String conversationId) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: _reactionEmojiMap.entries.map((entry) {
-              return GestureDetector(
-                onTap: () {
-                  _controller.addOrRemoveReaction(conversationId, msg.id, entry.key);
-                  Navigator.pop(context);
-                },
-                child: Text(entry.value, style: const TextStyle(fontSize: 32)),
-              );
-            }).toList(),
-          ),
-        );
-      },
+  void _showReactionPicker(MessageModel msg, String conversationId) {
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: _reactionEmojiMap.entries.map((entry) {
+            return GestureDetector(
+              onTap: () {
+                _controller.addOrRemoveReaction(conversationId, msg.id, entry.key);
+                Get.back();
+              },
+              child: Text(entry.value, style: const TextStyle(fontSize: 32)),
+            );
+          }).toList(),
+        ),
+      ),
+      backgroundColor: Colors.white,
     );
   }
 
-  void _showMessageOptionsDialog(BuildContext context, MessageModel msg, String conversationId) {
+  void _showMessageOptionsDialog(MessageModel msg, String conversationId) {
     final currentUser = FirebaseAuth.instance.currentUser!;
     final isSender = msg.senderUid == currentUser.uid;
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => SafeArea(
+    Get.bottomSheet(
+      SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -146,26 +136,23 @@ class ChatScreen extends StatelessWidget {
                 leading: const Icon(Icons.delete),
                 title: const Text('Xóa'),
                 onTap: () async {
-                  Navigator.pop(context);
+                  Get.back();
                   // Hiện dialog xác nhận xóa
-                  final confirmDelete = await showDialog<bool>(
-                    context: context,
-                    builder: (context) {
-                      return AlertDialog(
-                        title: const Text('Xác nhận'),
-                        content: const Text('Bạn có chắc muốn xóa tin nhắn này?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(false),
-                            child: const Text('Hủy'),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(true),
-                            child: const Text('Xóa', style: TextStyle(color: Colors.red)),
-                          ),
-                        ],
-                      );
-                    },
+                  final confirmDelete = await Get.dialog<bool>(
+                    AlertDialog(
+                      title: const Text('Xác nhận'),
+                      content: const Text('Bạn có chắc muốn xóa tin nhắn này?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Get.back(result: false),
+                          child: const Text('Hủy'),
+                        ),
+                        TextButton(
+                          onPressed: () => Get.back(result: true),
+                          child: const Text('Xóa', style: TextStyle(color: Colors.red)),
+                        ),
+                      ],
+                    ),
                   );
 
                   if (confirmDelete == true) {
@@ -178,29 +165,25 @@ class ChatScreen extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.close),
               title: const Text('Đóng'),
-              onTap: () => Navigator.pop(context),
+              onTap: () => Get.back(),
             ),
           ],
         ),
       ),
+      backgroundColor: Colors.white,
     );
   }
 
-  void _openImageFullScreen(BuildContext context, List<String> images, int index) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => Scaffold(
-          backgroundColor: Colors.black,
-          appBar: AppBar(backgroundColor: Colors.transparent),
-          body: Center(
-            child: InteractiveViewer(
-              child: Image.network(images[index]),
-            ),
-          ),
+  void _openImageFullScreen(List<String> images, int index) {
+    Get.to(() => Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(backgroundColor: Colors.transparent),
+      body: Center(
+        child: InteractiveViewer(
+          child: Image.network(images[index]),
         ),
       ),
-    );
+    ));
   }
 
   Widget _buildReactions(MessageModel msg) {
@@ -259,6 +242,7 @@ class ChatScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final currentUser = FirebaseAuth.instance.currentUser!;
     final String conversationId = getConversationId();
+
     // init user post count & emoji keyboard hide at build (stateless workaround)
     _controller.countUserPosts(user.uid);
     _controller.hideEmojiKeyboard();
@@ -310,12 +294,14 @@ class ChatScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           const Text('Bạn hãy nhắn tin với tài khoản Fluttergram này',
-                              style: TextStyle(color: Colors.grey, fontSize: 12)),
+                              style: TextStyle(color: Colors.grey, fontSize: 12)
+                          ),
                           ElevatedButton(
                               onPressed: () {
                                 Get.put(ProfileController()).navigateTo(user.uid);
                               },
-                              child: const Text('Xem trang cá nhân')),
+                              child: const Text('Xem trang cá nhân')
+                          ),
                           const SizedBox(height: 16),
                         ],
                       );
@@ -325,8 +311,8 @@ class ChatScreen extends StatelessWidget {
                     final isSender = msg.senderUid == currentUser.uid;
 
                     return GestureDetector(
-                      onDoubleTap: () => _showMessageOptionsDialog(context, msg, conversationId),
-                      onLongPress: () => _showReactionPicker(context, msg, conversationId),
+                      onDoubleTap: () => _showMessageOptionsDialog(msg, conversationId),
+                      onLongPress: () => _showReactionPicker(msg, conversationId),
                       child: Column(
                         crossAxisAlignment:
                         isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
@@ -351,7 +337,7 @@ class ChatScreen extends StatelessWidget {
                                           ? Padding(
                                         padding: const EdgeInsets.only(bottom: 8.0),
                                         child: GestureDetector(
-                                          onTap: () => _openImageFullScreen(context, msg.images, 0),
+                                          onTap: () => _openImageFullScreen(msg.images, 0),
                                           child: ClipRRect(
                                             borderRadius: BorderRadius.circular(12),
                                             child: Image.network(
@@ -379,7 +365,7 @@ class ChatScreen extends StatelessWidget {
                                             ),
                                             itemBuilder: (context, index) {
                                               return GestureDetector(
-                                                onTap: () => _openImageFullScreen(context, msg.images, index),
+                                                onTap: () => _openImageFullScreen(msg.images, index),
                                                 child: ClipRRect(
                                                   borderRadius: BorderRadius.circular(12),
                                                   child: Image.network(
@@ -494,7 +480,7 @@ class ChatScreen extends StatelessWidget {
             child: Row(
               children: [
                 IconButton(
-                  onPressed: () => _pickImages(context),
+                  onPressed: _pickImages,
                   icon: const Icon(Icons.photo),
                   color: Colors.redAccent,
                 ),
@@ -538,7 +524,7 @@ class ChatScreen extends StatelessWidget {
                     return c.isUploading
                         ? const CircularProgressIndicator()
                         : IconButton(
-                      onPressed: () => _sendMessage(context, conversationId, currentUser.uid),
+                      onPressed: () => _sendMessage(conversationId, currentUser.uid),
                       icon: const Icon(Icons.send),
                       color: Colors.redAccent,
                     );

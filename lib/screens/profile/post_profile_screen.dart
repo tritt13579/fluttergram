@@ -20,7 +20,6 @@ class PostProfileScreen extends StatelessWidget {
     final HomeController controller = Get.find<HomeController>();
     final ScrollController scrollController = ScrollController();
 
-    // Scroll to initialIndex after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final double position = initialIndex * 400.0;
       if (scrollController.hasClients) {

@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 
 import '../../models/post_model.dart';
 import '../../services/firebase_service.dart';
-import '../../services/post_service.dart';
 import '../models/comment_model.dart';
 import '../models/user_model.dart';
 import '../screens/profile/user_profile_screen.dart';
@@ -15,7 +14,6 @@ import 'bottom_nav_controller.dart';
 
 class HomeController extends GetxController {
   final FirebaseService firebaseService = FirebaseService();
-  late final PostService postService;
 
   final RxList<PostModel> posts = <PostModel>[].obs;
   final RxBool isLoading = true.obs;
@@ -35,7 +33,6 @@ class HomeController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    postService = PostService(firebaseService);
     currentUserId = firebaseService.auth.currentUser?.uid;
     loadPosts();
     if (currentUserId != null) {
@@ -108,18 +105,14 @@ class HomeController extends GetxController {
 
   Future<void> _checkAndUpdateLikeStatus(String postId) async {
     if (currentUserId == null) return;
-
     try {
-      final isLiked = await postService.hasUserLikedPost(
-        postId: postId,
-        userId: currentUserId!,
-      );
+      final isLiked = await PostModelSnapshot.hasUserLikedPost(postId, currentUserId!);
 
       final currentMap = Map<String, bool>.from(likedPostsMap.value);
       currentMap[postId] = isLiked;
       likedPostsMap.value = currentMap;
 
-      postService.likeStatusStream(
+      PostModelSnapshot.likeStatusStream(
         postId: postId,
         userId: currentUserId!,
       ).listen((isLiked) {
@@ -146,7 +139,7 @@ class HomeController extends GetxController {
         barrierDismissible: false,
       );
 
-      await postService.deletePost(postId);
+      await PostModelSnapshot.delete(postId);
 
       posts.removeWhere((post) => post.id == postId);
 
@@ -170,10 +163,7 @@ class HomeController extends GetxController {
     try {
       final currentLiked = likedPostsMap.value[post.id] ?? false;
 
-      await postService.toggleLike(
-        postId: post.id,
-        userId: currentUserId!,
-      );
+      await PostModelSnapshot.toggleLike(post.id, currentUserId!);
 
       final index = posts.indexWhere((p) => p.id == post.id);
       if (index != -1) {

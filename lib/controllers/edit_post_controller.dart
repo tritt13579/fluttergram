@@ -150,7 +150,6 @@ class EditPostController extends GetxController {
     showUserSuggestions.value = false;
   }
 
-  /// Chuyển từ PostService.updatePost sang PostModelSnapshot.update
   Future<void> updatePost() async {
     try {
       isLoading.value = true;
@@ -160,13 +159,11 @@ class EditPostController extends GetxController {
           .map((tag) => '#$tag')
           .toList();
 
-      // Update post object (cả caption và hashtags)
       final updatedPost = post.copyWith(
         caption: captionText,
         hashtags: hashtags,
       );
 
-      // Chuyển sang dùng PostModelSnapshot.update
       await PostModelSnapshot.update(updatedPost);
 
       if (Get.isRegistered<HomeController>()) {
