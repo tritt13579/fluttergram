@@ -309,7 +309,6 @@ class HomeController extends GetxController {
       isScrollControlled: true,
       backgroundColor: Colors.black,
     );
-    // comment
   }
 
   void navigateToProfile(String userId) {

@@ -498,6 +498,17 @@ class PostModelSnapshot {
     }
   }
 
+  static Future<List<String>> uploadMediaList(List<Uint8List?> mediaList, String userId) async {
+    List<String> mediaUrls = [];
+    for (var media in mediaList) {
+      if (media != null) {
+        final url = await _uploadMedia(media, userId);
+        mediaUrls.add(url);
+      }
+    }
+    return mediaUrls;
+  }
+
   static List<String> _extractHashtags(String caption) {
     final RegExp hashtagRegExp = RegExp(r'#(\w+)');
     return hashtagRegExp

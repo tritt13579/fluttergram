@@ -5,53 +5,35 @@ import '../../models/post_model.dart';
 import '../../widgets/post_item.dart';
 import '../../controllers/home_controller.dart';
 
-class PostProfileScreen extends StatefulWidget {
+class PostProfileScreen extends StatelessWidget {
   final List<PostModel> posts;
   final int initialIndex;
 
   const PostProfileScreen({
-    Key? key,
+    super.key,
     required this.posts,
     this.initialIndex = 0,
-  }) : super(key: key);
-
-  @override
-  State<PostProfileScreen> createState() => _PostProfileScreenState();
-}
-
-class _PostProfileScreenState extends State<PostProfileScreen> {
-  late ScrollController _scrollController;
-  late HomeController controller;
-
-  @override
-  void initState() {
-    super.initState();
-    controller = Get.find<HomeController>();
-
-    _scrollController = ScrollController();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      double position = widget.initialIndex * 400.0;
-      _scrollController.jumpTo(position);
-    });
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
+  });
 
   @override
   Widget build(BuildContext context) {
-    final posts = widget.posts;
+    final HomeController controller = Get.find<HomeController>();
+    final ScrollController scrollController = ScrollController();
+
+    // Scroll to initialIndex after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final double position = initialIndex * 400.0;
+      if (scrollController.hasClients) {
+        scrollController.jumpTo(position);
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Bài viết'),
+        title: const Text('Bài viết'),
       ),
       body: ListView.builder(
-        controller: _scrollController,
+        controller: scrollController,
         itemCount: posts.length,
         itemBuilder: (context, index) {
           final post = posts[index];

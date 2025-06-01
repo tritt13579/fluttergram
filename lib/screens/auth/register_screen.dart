@@ -7,42 +7,25 @@ import 'package:get/get.dart';
 
 import '../../controllers/auth_controller.dart';
 
-class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+class RegisterScreen extends StatelessWidget {
+  RegisterScreen({super.key});
 
-  @override
-  State<RegisterScreen> createState() => _SignupState();
-}
-
-class _SignupState extends State<RegisterScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _fullnameController = TextEditingController();
   final TextEditingController _bioController = TextEditingController();
-  final controllerAuth = Get.put(ControllerAuth());
+  final ControllerAuth controllerAuth = Get.put(ControllerAuth());
 
-  File? _avatarFile;
+  // Use a ValueNotifier to manage avatar in stateless
+  final ValueNotifier<File?> _avatarFile = ValueNotifier<File?>(null);
 
   Future<void> _pickAvatar() async {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (picked != null) {
-      setState(() {
-        _avatarFile = File(picked.path);
-      });
+      _avatarFile.value = File(picked.path);
     }
-  }
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
-    _usernameController.dispose();
-    _fullnameController.dispose();
-    _bioController.dispose();
-    super.dispose();
   }
 
   @override
@@ -78,7 +61,6 @@ class _SignupState extends State<RegisterScreen> {
         elevation: 0,
         toolbarHeight: 50,
       ),
-
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -107,16 +89,21 @@ class _SignupState extends State<RegisterScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    GestureDetector(
-                      onTap: _pickAvatar,
-                      child: CircleAvatar(
-                        radius: 40,
-                        backgroundImage: _avatarFile != null ? FileImage(_avatarFile!) : null,
-                        backgroundColor: Colors.grey.shade800,
-                        child: _avatarFile == null
-                            ? const Icon(Icons.camera_alt, color: Colors.white)
-                            : null,
-                      ),
+                    ValueListenableBuilder<File?>(
+                      valueListenable: _avatarFile,
+                      builder: (context, file, child) {
+                        return GestureDetector(
+                          onTap: _pickAvatar,
+                          child: CircleAvatar(
+                            radius: 40,
+                            backgroundImage: file != null ? FileImage(file) : null,
+                            backgroundColor: Colors.grey.shade800,
+                            child: file == null
+                                ? const Icon(Icons.camera_alt, color: Colors.white)
+                                : null,
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -300,7 +287,7 @@ class _SignupState extends State<RegisterScreen> {
                     username: _usernameController.text.trim(),
                     fullname: _fullnameController.text.trim(),
                     bio: _bioController.text.trim(),
-                    avatarFile: _avatarFile,
+                    avatarFile: _avatarFile.value,
                   );
                 },
                 child: const Text("Đăng ký", style: TextStyle(color: Colors.white)),

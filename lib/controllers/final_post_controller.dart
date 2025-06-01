@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -8,8 +7,7 @@ import 'package:get/get.dart';
 
 import '../models/hashtag_model.dart';
 import '../models/user_model.dart';
-import '../services/firebase_service.dart';
-import '../services/post_service.dart';
+import '../models/post_model.dart';
 import '../utils/snackbar_utils.dart';
 
 class FinalPostController extends GetxController {
@@ -17,8 +15,6 @@ class FinalPostController extends GetxController {
   final TextEditingController captionController = TextEditingController();
   final FocusNode captionFocusNode = FocusNode();
 
-  final firebaseService = FirebaseService();
-  late final PostService postService;
   StreamSubscription<List<String>>? _userSub;
   StreamSubscription<List<String>>? _hashtagSub;
   final FirebaseAuth auth = FirebaseAuth.instance;
@@ -42,8 +38,6 @@ class FinalPostController extends GetxController {
   void onInit() {
     super.onInit();
     captionController.addListener(_handleCaptionChanges);
-
-    postService = PostService(firebaseService);
   }
 
   void _handleCaptionChanges() {
@@ -118,8 +112,7 @@ class FinalPostController extends GetxController {
 
         fetchHashtagsByPrefix(searchTerm);
         showHashtagSuggestions.value = true;
-      }
-      else if (currentWord.startsWith('@')) {
+      } else if (currentWord.startsWith('@')) {
         String searchTerm = currentWord.substring(1).toLowerCase();
         searchPrefix.value = searchTerm;
 
@@ -170,7 +163,7 @@ class FinalPostController extends GetxController {
           .map((tag) => '#$tag')
           .toList();
 
-      final List<String> mediaUrls = await postService.uploadMediaFiles(mediaList, userId!);
+      final List<String> mediaUrls = await PostModelSnapshot.uploadMediaList(mediaList, userId!);
 
       if (captionText.isEmpty && mediaUrls.isEmpty) {
         SnackbarUtils.showWarning('Vui lòng nhập caption hoặc chọn ảnh/video');
@@ -178,14 +171,20 @@ class FinalPostController extends GetxController {
         return;
       }
 
-      await postService.createPost(
-        userId: userId!,
-        caption: captionText,
-        mediaUrls: mediaUrls,
+      final post = PostModel(
+        id: '',
+        ownerId: userId!,
         ownerUsername: username,
         ownerPhotoUrl: avatarUrl,
+        caption: captionText,
+        mediaUrls: mediaUrls,
         hashtags: hashtags,
+        likeCount: 0,
+        commentCount: 0,
+        createdAt: DateTime.now(),
       );
+
+      await PostModelSnapshot.insert(post, mediaList);
 
       Get.offAll(MainLayout());
       SnackbarUtils.showSuccess('Bài viết đã được đăng');

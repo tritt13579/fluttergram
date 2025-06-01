@@ -1,247 +1,213 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/messages_controller.dart';
-import '../../models/post_model.dart';
 import '../../models/user_chat_model.dart';
-import '../../services/firebase_service.dart';
-import '../../services/post_service.dart';
+import '../../models/user_model.dart';
 import '../messages/chat_screen.dart';
 import 'post_profile_screen.dart';
 
-class UserProfileScreen extends StatefulWidget {
+class UserProfileScreen extends StatelessWidget {
   final String userId;
-
   const UserProfileScreen({super.key, required this.userId});
 
-  @override
-  State<UserProfileScreen> createState() => _UserProfileScreenState();
-}
-
-class _UserProfileScreenState extends State<UserProfileScreen> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final PostService _postService = PostService(FirebaseService());
-
-  List<PostModel> userPosts = [];
-  String username = '';
-  String fullname = '';
-  String bio = '';
-  String avatarUrl = '';
-  bool isLoading = true;
-  int postCount = 0;
-  String email = '';
-  String joinDate = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUserProfile();
-  }
-
-  Future<void> _loadUserProfile() async {
+  Future<ProfileResult?> _loadUserProfile() async {
     try {
-      final doc = await _firestore.collection('users').doc(widget.userId).get();
-      final data = doc.data();
-
-      if (data != null) {
-        final posts = await _postService.getUserPosts(widget.userId);
-
-        final Timestamp? createdAtTimestamp = data['created_at'];
-        if (createdAtTimestamp != null) {
-          final createdAt = createdAtTimestamp.toDate();
-          joinDate = '${createdAt.month.toString().padLeft(2, '0')}/${createdAt.year}';
-        }
-
-        setState(() {
-          username = data['username'] ?? '';
-          fullname = data['fullname'] ?? '';
-          bio = data['bio'] ?? '';
-          avatarUrl = data['avatar_url'] ?? '';
-          email = data['email'] ?? '';
-          postCount = data['post_count'] ?? posts.length;
-          userPosts = posts;
-          isLoading = false;
-        });
-      }
+      return await UserModelSnapshot.getUserProfileAndPosts(userId);
     } catch (e) {
       debugPrint('Lỗi khi tải thông tin người dùng khác: $e');
-      setState(() {
-        isLoading = false;
-      });
+      return null;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      return const Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
+    return FutureBuilder<ProfileResult?>(
+      future: _loadUserProfile(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            backgroundColor: Colors.black,
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: Text(username),
-        backgroundColor: Colors.black,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Avatar + số liệu
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundImage: avatarUrl.isNotEmpty
-                        ? NetworkImage(avatarUrl)
-                        : const AssetImage('assets/avatar.png') as ImageProvider,
+        if (!snapshot.hasData || snapshot.data == null) {
+          return const Scaffold(
+            backgroundColor: Colors.black,
+            body: Center(child: Text('Không tìm thấy người dùng', style: TextStyle(color: Colors.white))),
+          );
+        }
+
+        final user = snapshot.data!.user;
+        final userPosts = snapshot.data!.posts;
+        final postCount = snapshot.data!.postCount;
+        final createdAt = user.createdAt;
+        final joinDate = '${createdAt.month.toString().padLeft(2, '0')}/${createdAt.year}';
+
+        return Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            title: Text(user.username),
+            backgroundColor: Colors.black,
+          ),
+          body: SingleChildScrollView(
+            child: Column(
+              children: [
+                // Avatar + số liệu
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 40,
+                        backgroundImage: user.avatarUrl.isNotEmpty
+                            ? NetworkImage(user.avatarUrl)
+                            : const AssetImage('assets/avatar.png') as ImageProvider,
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _StatItem(value: postCount.toString(), label: 'Bài viết'),
+                            _StatItem(value: joinDate, label: 'Tham Gia'),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                ),
+
+                // Họ tên, username, bio
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _StatItem(value: postCount.toString(), label: 'Bài viết'),
-                        _StatItem(value: joinDate, label: 'Tham Gia'),
+                        Text(
+                          user.fullname,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text('@${user.username}', style: const TextStyle(color: Colors.grey)),
+                        const SizedBox(height: 4),
+                        Text(user.bio, style: const TextStyle(color: Colors.white)),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-
-            // Họ tên, username, bio
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      fullname,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text('@$username', style: const TextStyle(color: Colors.grey)),
-                    const SizedBox(height: 4),
-                    Text(bio, style: const TextStyle(color: Colors.white)),
-                  ],
                 ),
-              ),
-            ),
 
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.grey),
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: () {
-                        if (!Get.isRegistered<MessagesController>()) {
-                          Get.put(MessagesController());
-                        }
-                        final user = UserChatModel(
-                          uid: widget.userId,
-                          fullname: fullname,
-                          username: username,
-                          avatarUrl: avatarUrl,
-                        );
-
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ChatScreen(user: user),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.grey),
+                            foregroundColor: Colors.white,
                           ),
-                        );
-                      },
-                      child: const Text(
-                        'Nhắn tin',
-                        style: TextStyle(fontSize: 14),
+                          onPressed: () {
+                            if (!Get.isRegistered<MessagesController>()) {
+                              Get.put(MessagesController());
+                            }
+                            final userChat = UserChatModel(
+                              uid: userId,
+                              fullname: user.fullname,
+                              username: user.username,
+                              avatarUrl: user.avatarUrl,
+                            );
+
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ChatScreen(user: userChat),
+                              ),
+                            );
+                          },
+                          child: const Text(
+                            'Nhắn tin',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-            // Danh sách bài viết
-            Padding(
-              padding: const EdgeInsets.all(2),
-              child: GridView.builder(
-                physics: const NeverScrollableScrollPhysics(),
-                shrinkWrap: true,
-                itemCount: userPosts.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 2,
-                  mainAxisSpacing: 2,
-                  childAspectRatio: 1,
                 ),
-                itemBuilder: (context, index) {
-                  final post = userPosts[index];
-                  final imageUrl = post.mediaUrls.isNotEmpty ? post.mediaUrls.first : null;
 
-                  if (imageUrl == null) {
-                    return Container(
-                      color: Colors.grey[800],
-                      child: const Icon(Icons.image, color: Colors.white),
-                    );
-                  }
+                const SizedBox(height: 16),
+                // Danh sách bài viết
+                Padding(
+                  padding: const EdgeInsets.all(2),
+                  child: GridView.builder(
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    itemCount: userPosts.length,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      crossAxisSpacing: 2,
+                      mainAxisSpacing: 2,
+                      childAspectRatio: 1,
+                    ),
+                    itemBuilder: (context, index) {
+                      final post = userPosts[index];
+                      final imageUrl = post.mediaUrls.isNotEmpty ? post.mediaUrls.first : null;
 
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => PostProfileScreen(
-                            posts: userPosts,
-                            initialIndex: index,
-                          ),
+                      if (imageUrl == null) {
+                        return Container(
+                          color: Colors.grey[800],
+                          child: const Icon(Icons.image, color: Colors.white),
+                        );
+                      }
+
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PostProfileScreen(
+                                posts: userPosts,
+                                initialIndex: index,
+                              ),
+                            ),
+                          );
+                        },
+                        child: Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                    : null,
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey[800],
+                              child: const Icon(Icons.broken_image, color: Colors.white),
+                            );
+                          },
                         ),
                       );
                     },
-                    child: Image.network(
-                      imageUrl,
-                      fit: BoxFit.cover,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Center(
-                          child: CircularProgressIndicator(
-                            value: loadingProgress.expectedTotalBytes != null
-                                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                : null,
-                          ),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: Colors.grey[800],
-                          child: const Icon(Icons.broken_image, color: Colors.white),
-                        );
-                      },
-                    ),
-                  );
-                },
-              ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

@@ -110,7 +110,7 @@ class ControllerAuth extends GetxController {
 
   Future<String> _uploadAvatar(File? avatarFile, String uid) async {
     const defaultAvatarUrl =
-        'https://firebasestorage.googleapis.com/v0/b/fluttergram-5077d.appspot.com/o/avatars%2Fdefaul%2Fdefaults.jpg?alt=media';
+        'https://firebasestorage.googleapis.com/v0/b/fluttergram-5077d.firebasestorage.app/o/avatars%2Fdefaul%2Fdefaults.jpg?alt=media&token=c2b23799-2212-43ba-98ce-e1e2646f387e';
 
     if (avatarFile == null || !await avatarFile.exists()) return defaultAvatarUrl;
 
@@ -173,7 +173,7 @@ class ControllerAuth extends GetxController {
     _setLoading(true);
     await _auth.signOut();
     _setLoading(false);
-    Get.offAll(() => const LoginScreen());
+    Get.offAll(() => LoginScreen());
   }
 
   void _handleAuthError(FirebaseAuthException e) {

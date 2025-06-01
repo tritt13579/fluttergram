@@ -18,7 +18,7 @@ class MessagesScreen extends StatelessWidget {
               ? controller.currentUsername
               : 'Tài khoản'),
           actions: [
-            IconButton(icon: const Icon(Icons.edit_square), onPressed: () {Get.to(() => const EditProfileScreen());}),
+            IconButton(icon: const Icon(Icons.edit_square), onPressed: () {Get.to(() => EditProfileScreen());}),
           ],
         ),
         body: SingleChildScrollView(

@@ -11,21 +11,14 @@ import '../../controllers/profile_controller.dart';
 import '../../models/message_model.dart';
 import '../../models/user_chat_model.dart';
 
-class ChatScreen extends StatefulWidget {
+class ChatScreen extends StatelessWidget {
   final UserChatModel user;
-  const ChatScreen({super.key, required this.user});
+  ChatScreen({super.key, required this.user});
 
-  @override
-  _ChatScreenState createState() => _ChatScreenState();
-}
-
-class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final MessagesController _controller = Get.find<MessagesController>();
-  late String _conversationId;
-  final currentUser = FirebaseAuth.instance.currentUser!;
-  final Map<String, String> _reactionEmojiMap = {
+  final Map<String, String> _reactionEmojiMap = const {
     'like': '👍',
     'love': '❤️',
     'laugh': '😂',
@@ -33,20 +26,10 @@ class _ChatScreenState extends State<ChatScreen> {
     'sad': '😢',
     'angry': '😡',
   };
-  @override
-  void initState() {
-    super.initState();
-    _conversationId = _controller.getConversationId(currentUser.uid, widget.user.uid);
-    _controller.countUserPosts(widget.user.uid);
-    _controller.hideEmojiKeyboard();
-  }
-  @override
-  void dispose() {
-    _messageController.dispose();
-    _scrollController.dispose();
-    _controller.clearImages();
-    _controller.hideEmojiKeyboard();
-    super.dispose();
+
+  String getConversationId() {
+    final currentUser = FirebaseAuth.instance.currentUser!;
+    return _controller.getConversationId(currentUser.uid, user.uid);
   }
 
   void _scrollToBottom() {
@@ -54,55 +37,53 @@ class _ChatScreenState extends State<ChatScreen> {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
-          duration: Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
         );
       }
     });
   }
 
-  Future<void> _sendMessage() async {
+  Future<void> _sendMessage(BuildContext context, String conversationId, String currentUserId) async {
     final messageText = _messageController.text.trim();
     final selectedImages = _controller.selectedImages;
     if (messageText.isEmpty && selectedImages.isEmpty) return;
 
     _controller.setUploading(true);
     try {
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).get();
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUserId).get();
       final senderName = userDoc.data()?['fullname'] ?? 'Bạn';
       final senderAvatar = userDoc.data()?['avatar_url'] ??
           'https://www.gravatar.com/avatar/placeholder?s=150&d=mp';
 
       final uploadedImageUrls = selectedImages.isNotEmpty
-          ? await _controller.uploadImages(images: selectedImages, path: 'chat_images/$_conversationId')
+          ? await _controller.uploadImages(images: selectedImages, path: 'chat_images/$conversationId')
           : <String>[];
 
       final message = MessageModel(
-        senderUid: currentUser.uid,
+        senderUid: currentUserId,
         senderName: senderName,
         senderAvatar: senderAvatar,
-        receiverUid: widget.user.uid,
+        receiverUid: user.uid,
         message: messageText,
         timestamp: DateTime.now(),
         id: '',
         images: uploadedImageUrls,
       );
 
-      await _controller.sendMessage(_conversationId, message, imageUrls: uploadedImageUrls);
+      await _controller.sendMessage(conversationId, message, imageUrls: uploadedImageUrls);
       _messageController.clear();
       _controller.clearImages();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gửi tin nhắn thất bại: $e'), backgroundColor: Colors.red),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gửi tin nhắn thất bại: $e'), backgroundColor: Colors.red),
+      );
     } finally {
       _controller.setUploading(false);
     }
   }
 
-  Future<void> _pickImages() async {
+  Future<void> _pickImages(BuildContext context) async {
     final picker = ImagePicker();
     final List<XFile> files = await picker.pickMultiImage();
 
@@ -128,25 +109,177 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  void _showReactionPicker(BuildContext context, MessageModel msg, String conversationId) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: _reactionEmojiMap.entries.map((entry) {
+              return GestureDetector(
+                onTap: () {
+                  _controller.addOrRemoveReaction(conversationId, msg.id, entry.key);
+                  Navigator.pop(context);
+                },
+                child: Text(entry.value, style: const TextStyle(fontSize: 32)),
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showMessageOptionsDialog(BuildContext context, MessageModel msg, String conversationId) {
+    final currentUser = FirebaseAuth.instance.currentUser!;
+    final isSender = msg.senderUid == currentUser.uid;
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isSender)
+              ListTile(
+                leading: const Icon(Icons.delete),
+                title: const Text('Xóa'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  // Hiện dialog xác nhận xóa
+                  final confirmDelete = await showDialog<bool>(
+                    context: context,
+                    builder: (context) {
+                      return AlertDialog(
+                        title: const Text('Xác nhận'),
+                        content: const Text('Bạn có chắc muốn xóa tin nhắn này?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            child: const Text('Hủy'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            child: const Text('Xóa', style: TextStyle(color: Colors.red)),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+
+                  if (confirmDelete == true) {
+                    if (msg.senderUid == currentUser.uid) {
+                      await _controller.deleteMessage(conversationId, msg.id);
+                    }
+                  }
+                },
+              ),
+            ListTile(
+              leading: const Icon(Icons.close),
+              title: const Text('Đóng'),
+              onTap: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openImageFullScreen(BuildContext context, List<String> images, int index) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(backgroundColor: Colors.transparent),
+          body: Center(
+            child: InteractiveViewer(
+              child: Image.network(images[index]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReactions(MessageModel msg) {
+    if (msg.reactions == null || msg.reactions!.isEmpty) return const SizedBox.shrink();
+
+    final reactionsCount = <String, int>{};
+    for (var reaction in msg.reactions!.values) {
+      reactionsCount[reaction] = (reactionsCount[reaction] ?? 0) + 1;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: reactionsCount.entries.map((entry) {
+            final emoji = _reactionEmojiMap[entry.key] ?? '👍';
+            final count = entry.value;
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 1),
+              child: Row(
+                children: [
+                  Text(emoji, style: const TextStyle(fontSize: 12)),
+                  if (count > 1)
+                    Text(' $count', style: const TextStyle(fontSize: 12, color: Colors.black)),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmojiPicker() {
+    return GetBuilder<MessagesController>(
+      id: 'emoji',
+      builder: (_) {
+        if (!_controller.isEmojiVisible) return const SizedBox.shrink();
+        return EmojiPicker(
+          onEmojiSelected: (category, emoji) {
+            _messageController.text += emoji.emoji;
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final currentUser = FirebaseAuth.instance.currentUser!;
+    final String conversationId = getConversationId();
+    // init user post count & emoji keyboard hide at build (stateless workaround)
+    _controller.countUserPosts(user.uid);
+    _controller.hideEmojiKeyboard();
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.user.fullname),
+        title: Text(user.fullname),
       ),
       body: Column(
         children: [
           // Phần list tin nhắn + avatar thông tin user
           Expanded(
             child: StreamBuilder<List<MessageModel>>(
-              stream: _controller.getMessagesStream(_conversationId),
+              stream: _controller.getMessagesStream(conversationId),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
+                  return const Center(child: CircularProgressIndicator());
                 }
 
                 final messages = snapshot.data ?? [];
-                WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+                _scrollToBottom();
                 return ListView.builder(
                   controller: _scrollController,
                   reverse: false,
@@ -158,31 +291,31 @@ class _ChatScreenState extends State<ChatScreen> {
                         children: [
                           const SizedBox(height: 16),
                           CircleAvatar(
-                            backgroundImage: NetworkImage(widget.user.avatarUrl),
+                            backgroundImage: NetworkImage(user.avatarUrl),
                             radius: 40,
                           ),
                           const SizedBox(height: 8),
-                          Text(widget.user.fullname,
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                          Text(widget.user.username, style: TextStyle(color: Colors.grey)),
+                          Text(user.fullname,
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          Text(user.username, style: const TextStyle(color: Colors.grey)),
                           const SizedBox(height: 4),
                           GetBuilder<MessagesController>(
                             id: 'user_post_count',
                             builder: (c) {
                               return Text(
                                 'Tài khoản tích cực - ${c.userPostCount} bài viết',
-                                style: TextStyle(color: Colors.grey),
+                                style: const TextStyle(color: Colors.grey),
                               );
                             },
                           ),
                           const SizedBox(height: 4),
-                          Text('Bạn hãy nhắn tin với tài khoản Fluttergram này',
+                          const Text('Bạn hãy nhắn tin với tài khoản Fluttergram này',
                               style: TextStyle(color: Colors.grey, fontSize: 12)),
                           ElevatedButton(
-                            onPressed: () {
-                                Get.put(ProfileController()).navigateTo(widget.user.uid);
-                            },
-                            child: Text('Xem trang cá nhân')),
+                              onPressed: () {
+                                Get.put(ProfileController()).navigateTo(user.uid);
+                              },
+                              child: const Text('Xem trang cá nhân')),
                           const SizedBox(height: 16),
                         ],
                       );
@@ -192,8 +325,8 @@ class _ChatScreenState extends State<ChatScreen> {
                     final isSender = msg.senderUid == currentUser.uid;
 
                     return GestureDetector(
-                      onDoubleTap: () => _showMessageOptionsDialog(msg),
-                      onLongPress: () => _showReactionPicker(msg),
+                      onDoubleTap: () => _showMessageOptionsDialog(context, msg, conversationId),
+                      onLongPress: () => _showReactionPicker(context, msg, conversationId),
                       child: Column(
                         crossAxisAlignment:
                         isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
@@ -202,7 +335,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             padding: const EdgeInsets.symmetric(vertical: 4),
                             child: Text(
                               _controller.formatTimestamp(msg.timestamp),
-                              style: TextStyle(fontSize: 12, color: Colors.white54),
+                              style: const TextStyle(fontSize: 12, color: Colors.white54),
                             ),
                           ),
                           Align(
@@ -236,9 +369,9 @@ class _ChatScreenState extends State<ChatScreen> {
                                           width: MediaQuery.of(context).size.width * 0.6,
                                           child: GridView.builder(
                                             shrinkWrap: true,
-                                            physics: NeverScrollableScrollPhysics(),
+                                            physics: const NeverScrollableScrollPhysics(),
                                             itemCount: msg.images.length,
-                                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                                               crossAxisCount: 2,
                                               mainAxisSpacing: 8,
                                               crossAxisSpacing: 8,
@@ -266,37 +399,37 @@ class _ChatScreenState extends State<ChatScreen> {
                                       ),
                                     ],
                                   ),
-                                  if (msg.message.isNotEmpty)
-                                    Stack(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                          margin: const EdgeInsets.only(bottom: 16),
-                                          decoration: BoxDecoration(
-                                            color: isSender ? Colors.redAccent : Colors.grey.shade300,
-                                            borderRadius: BorderRadius.circular(12),
+                                if (msg.message.isNotEmpty)
+                                  Stack(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        margin: const EdgeInsets.only(bottom: 16),
+                                        decoration: BoxDecoration(
+                                          color: isSender ? Colors.redAccent : Colors.grey.shade300,
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: ConstrainedBox(
+                                          constraints: BoxConstraints(
+                                            maxWidth: MediaQuery.of(context).size.width * 0.55,
                                           ),
-                                          child: ConstrainedBox(
-                                            constraints: BoxConstraints(
-                                              maxWidth: MediaQuery.of(context).size.width * 0.55,
-                                            ),
-                                            child: Text(
-                                              msg.images.isNotEmpty ? 'Ảnh: ${msg.message}' : msg.message,
-                                              style: TextStyle(
-                                                color: isSender ? Colors.white : Colors.black87,
-                                                fontSize: 16,
-                                              ),
+                                          child: Text(
+                                            msg.images.isNotEmpty ? 'Ảnh: ${msg.message}' : msg.message,
+                                            style: TextStyle(
+                                              color: isSender ? Colors.white : Colors.black87,
+                                              fontSize: 16,
                                             ),
                                           ),
                                         ),
-                                        Positioned(
-                                          bottom: 0,
-                                          right: 0,
-                                          child: _buildReactions(msg),
-                                        ),
-                                      ],
-                                    ),
-                                SizedBox(height: 8),
+                                      ),
+                                      Positioned(
+                                        bottom: 0,
+                                        right: 0,
+                                        child: _buildReactions(msg),
+                                      ),
+                                    ],
+                                  ),
+                                const SizedBox(height: 8),
                               ],
                             ),
                           ),
@@ -313,7 +446,7 @@ class _ChatScreenState extends State<ChatScreen> {
           GetBuilder<MessagesController>(
             id: 'selected_images',
             builder: (c) {
-              if (c.selectedImages.isEmpty) return SizedBox();
+              if (c.selectedImages.isEmpty) return const SizedBox();
               return SizedBox(
                 height: 120,
                 child: ListView.builder(
@@ -323,7 +456,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     return Stack(
                       children: [
                         Container(
-                          margin: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                          margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(10),
                             color: Colors.grey[300],
@@ -339,11 +472,11 @@ class _ChatScreenState extends State<ChatScreen> {
                           child: GestureDetector(
                             onTap: () => c.removeImageAt(index),
                             child: Container(
-                              decoration: BoxDecoration(
+                              decoration: const BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: Colors.black54,
                               ),
-                              child: Icon(Icons.close, color: Colors.white, size: 20),
+                              child: const Icon(Icons.close, color: Colors.white, size: 20),
                             ),
                           ),
                         ),
@@ -360,10 +493,9 @@ class _ChatScreenState extends State<ChatScreen> {
             padding: const EdgeInsets.all(8.0),
             child: Row(
               children: [
-
                 IconButton(
-                  onPressed: _pickImages,
-                  icon: Icon(Icons.photo),
+                  onPressed: () => _pickImages(context),
+                  icon: const Icon(Icons.photo),
                   color: Colors.redAccent,
                 ),
                 Expanded(
@@ -391,7 +523,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(30),
                       ),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       filled: true,
                     ),
                     onTap: () {
@@ -399,15 +531,15 @@ class _ChatScreenState extends State<ChatScreen> {
                     },
                   ),
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 GetBuilder<MessagesController>(
                   id: 'uploading_status',
                   builder: (c) {
                     return c.isUploading
-                        ? CircularProgressIndicator()
+                        ? const CircularProgressIndicator()
                         : IconButton(
-                      onPressed: _sendMessage,
-                      icon: Icon(Icons.send),
+                      onPressed: () => _sendMessage(context, conversationId, currentUser.uid),
+                      icon: const Icon(Icons.send),
                       color: Colors.redAccent,
                     );
                   },
@@ -419,153 +551,4 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
-
-  Widget _buildEmojiPicker() {
-    return GetBuilder<MessagesController>(
-      id: 'emoji',
-      builder: (_) {
-        if (!_controller.isEmojiVisible) return SizedBox.shrink();
-        return EmojiPicker(
-          onEmojiSelected: (category, emoji) {
-            _messageController.text += emoji.emoji;
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildReactions(MessageModel msg) {
-    if (msg.reactions == null || msg.reactions!.isEmpty) return SizedBox.shrink();
-
-    final reactionsCount = <String, int>{};
-    for (var reaction in msg.reactions!.values) {
-      reactionsCount[reaction] = (reactionsCount[reaction] ?? 0) + 1;
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: reactionsCount.entries.map((entry) {
-            final emoji = _reactionEmojiMap[entry.key] ?? '👍';
-            final count = entry.value;
-
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 1),
-              child: Row(
-                children: [
-                  Text(emoji, style: TextStyle(fontSize: 12)),
-                  if (count > 1)
-                    Text(' $count', style: TextStyle(fontSize: 12, color: Colors.black)),
-                ],
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  void _showReactionPicker(MessageModel msg) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return Container(
-          padding: EdgeInsets.symmetric(vertical: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: _reactionEmojiMap.entries.map((entry) {
-              return GestureDetector(
-                onTap: () {
-                  _controller.addOrRemoveReaction(_conversationId, msg.id, entry.key);
-                  Navigator.pop(context);
-                },
-                child: Text(entry.value, style: TextStyle(fontSize: 32)),
-              );
-            }).toList(),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showMessageOptionsDialog(MessageModel msg) {
-    final isSender = msg.senderUid == currentUser.uid;
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (isSender)
-              ListTile(
-                leading: Icon(Icons.delete),
-                title: Text('Xóa'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  // Hiện dialog xác nhận xóa
-                  final confirmDelete = await showDialog<bool>(
-                    context: context,
-                    builder: (context) {
-                      return AlertDialog(
-                        title: Text('Xác nhận'),
-                        content: Text('Bạn có chắc muốn xóa tin nhắn này?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(false),
-                            child: Text('Hủy'),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(true),
-                            child: Text('Xóa', style: TextStyle(color: Colors.red)),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-
-                  if (confirmDelete == true) {
-                    final currentUser = FirebaseAuth.instance.currentUser!;
-                    final conversationId = _controller.getConversationId(currentUser.uid, widget.user.uid);
-
-                    if (msg.senderUid == currentUser.uid) {
-                      await _controller.deleteMessage(conversationId, msg.id);
-                    }
-                  }
-                },
-              ),
-            ListTile(
-              leading: Icon(Icons.close),
-              title: Text('Đóng'),
-              onTap: () => Navigator.pop(context),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _openImageFullScreen(BuildContext context, List<String> images, int index) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => Scaffold(
-          backgroundColor: Colors.black,
-          appBar: AppBar(backgroundColor: Colors.transparent),
-          body: Center(
-            child: InteractiveViewer(
-              child: Image.network(images[index]),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
-

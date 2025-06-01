@@ -8,8 +8,6 @@ import 'package:get/get.dart';
 import '../models/hashtag_model.dart';
 import '../models/post_model.dart';
 import '../models/user_model.dart';
-import '../services/firebase_service.dart';
-import '../services/post_service.dart';
 import 'home_controller.dart';
 
 class EditPostController extends GetxController {
@@ -17,8 +15,6 @@ class EditPostController extends GetxController {
   final TextEditingController captionController = TextEditingController();
   final FocusNode captionFocusNode = FocusNode();
 
-  final firebaseService = FirebaseService();
-  late final PostService postService;
   final FirebaseAuth auth = FirebaseAuth.instance;
   StreamSubscription<List<String>>? _userSub;
   StreamSubscription<List<String>>? _hashtagSub;
@@ -41,7 +37,6 @@ class EditPostController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    postService = PostService(firebaseService);
 
     captionController.text = post.caption;
     caption.value = post.caption;
@@ -155,6 +150,7 @@ class EditPostController extends GetxController {
     showUserSuggestions.value = false;
   }
 
+  /// Chuyển từ PostService.updatePost sang PostModelSnapshot.update
   Future<void> updatePost() async {
     try {
       isLoading.value = true;
@@ -164,16 +160,14 @@ class EditPostController extends GetxController {
           .map((tag) => '#$tag')
           .toList();
 
-      await postService.updatePost(
-        postId: post.id,
-        caption: captionText,
-        hashtags: hashtags,
-      );
-
+      // Update post object (cả caption và hashtags)
       final updatedPost = post.copyWith(
         caption: captionText,
         hashtags: hashtags,
       );
+
+      // Chuyển sang dùng PostModelSnapshot.update
+      await PostModelSnapshot.update(updatedPost);
 
       if (Get.isRegistered<HomeController>()) {
         Get.find<HomeController>().updatePostInList(updatedPost);

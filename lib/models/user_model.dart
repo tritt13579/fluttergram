@@ -1,7 +1,7 @@
 import 'dart:async';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:fluttergram/models/post_model.dart';
 
 class UserModel {
   final String uid;
@@ -154,4 +154,43 @@ class UserModelSnapshot {
       rethrow;
     }
   }
+
+  /// Get user profile and their posts (returns postCount and List<PostModel>)
+  static Future<ProfileResult> getUserProfileAndPosts(String uid) async {
+    // Lấy user
+    final userDoc = await _firestore.collection('users').doc(uid).get();
+    if (!userDoc.exists || userDoc.data() == null) {
+      throw Exception('Không tìm thấy user');
+    }
+    final user = UserModel.fromMap(userDoc.data()!);
+
+    // Lấy posts với PostModel
+    final postSnap = await _firestore
+        .collection('posts')
+        .where('ownerId', isEqualTo: uid)
+        .orderBy('createdAt', descending: true)
+        .get();
+
+    final posts = postSnap.docs.map((doc) => PostModel.fromFirestore(doc)).toList();
+
+    final postCount = postSnap.size;
+
+    return ProfileResult(
+      user: user,
+      postCount: postCount,
+      posts: posts,
+    );
+  }
+}
+
+class ProfileResult {
+  final UserModel user;
+  final int postCount;
+  final List<PostModel> posts;
+
+  ProfileResult({
+    required this.user,
+    required this.postCount,
+    required this.posts,
+  });
 }

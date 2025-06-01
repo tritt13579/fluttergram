@@ -1,14 +1,11 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:fluttergram/screens/profile/post_profile_screen.dart';
-import '../../services/firebase_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../controllers/auth_controller.dart';
+import '../../models/user_model.dart';
 import '../../models/post_model.dart';
-import '../../services/post_service.dart';
 import 'edit_profile_screen.dart';
+import 'post_profile_screen.dart';
 import 'package:get/get.dart';
-
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -19,8 +16,6 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final PostService _postService = PostService(FirebaseService());
   final controllerAuth = Get.put(ControllerAuth());
 
   List<PostModel> userPosts = [];
@@ -44,34 +39,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (uid == null) return;
 
     try {
-      final doc = await _firestore.collection('users').doc(uid).get();
-      final data = doc.data();
+      final profileResult = await UserModelSnapshot.getUserProfileAndPosts(uid);
 
-      if (data != null) {
-        final posts = await _postService.getUserPosts(uid);
+      final user = profileResult.user;
+      final posts = profileResult.posts;
 
-        // Lấy ngày tạo tài khoản
-        final Timestamp? createdAtTimestamp = data['created_at'];
-        if (createdAtTimestamp != null) {
-          final createdAt = createdAtTimestamp.toDate();
-          joinDate = '${createdAt.month.toString().padLeft(2, '0')}/${createdAt.year}';
-        }
+      final createdAt = user.createdAt;
+      joinDate = '${createdAt.month.toString().padLeft(2, '0')}/${createdAt.year}';
 
-        setState(() {
-          username = data['username'] ?? '';
-          fullname = data['fullname'] ?? '';
-          bio = data['bio'] ?? '';
-          avatarUrl = data['avatar_url'] ?? '';
-          postCount = data['post_count'] ?? posts.length;
-          userPosts = posts;
-          isLoading = false;
-        });
-      }
+      setState(() {
+        username = user.username;
+        fullname = user.fullname;
+        bio = user.bio;
+        avatarUrl = user.avatarUrl;
+        postCount = profileResult.postCount;
+        userPosts = posts;
+        isLoading = false;
+      });
     } catch (e) {
       debugPrint('Lỗi khi tải thông tin người dùng: $e');
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -154,7 +142,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         bool? result = await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const EditProfileScreen(),
+                            builder: (context) => EditProfileScreen(),
                           ),
                         );
                         if (result == true) {

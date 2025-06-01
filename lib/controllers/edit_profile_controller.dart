@@ -2,12 +2,13 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:fluttergram/utils/snackbar_utils.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../models/user_model.dart';
 
-class EditProfileController {
+class EditProfileController extends GetxController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
@@ -15,10 +16,18 @@ class EditProfileController {
   final userNameController = TextEditingController();
   final bioController = TextEditingController();
 
-  File? avatarImage;
-  String? avatarUrl;
+  Rx<File?> avatarImage = Rx<File?>(null);
+  RxString avatarUrl = "".obs;
 
-  Future<void> loadUserData(VoidCallback onLoaded) async {
+  @override
+  void onClose() {
+    nameController.dispose();
+    userNameController.dispose();
+    bioController.dispose();
+    super.onClose();
+  }
+
+  Future<void> loadUserData() async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return;
 
@@ -28,16 +37,16 @@ class EditProfileController {
       nameController.text = user.fullname;
       userNameController.text = user.username;
       bioController.text = user.bio;
-      avatarUrl = user.avatarUrl;
-      onLoaded();
+      avatarUrl.value = user.avatarUrl;
+      update();
     }
   }
 
-  Future<void> pickImage(Function(File) onPicked) async {
+  Future<void> pickImage() async {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (picked != null) {
-      avatarImage = File(picked.path);
-      onPicked(avatarImage!);
+      avatarImage.value = File(picked.path);
+      update();
     }
   }
 
@@ -61,9 +70,9 @@ class EditProfileController {
     );
 
     try {
-      String? newAvatarUrl = avatarUrl;
-      if (avatarImage != null) {
-        newAvatarUrl = await _uploadAvatar(avatarImage!, uid);
+      String? newAvatarUrl = avatarUrl.value.isNotEmpty ? avatarUrl.value : null;
+      if (avatarImage.value != null) {
+        newAvatarUrl = await _uploadAvatar(avatarImage.value!, uid);
       }
 
       final map = await UserModelSnapshot.getMapUserModel();

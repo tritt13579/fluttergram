@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import '../../controllers/searchfl_controller.dart';
 
 class SearchInput extends StatelessWidget {

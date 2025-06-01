@@ -5,24 +5,12 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../controllers/auth_controller.dart';
 import 'package:get/get.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class LoginScreen extends StatelessWidget {
+  LoginScreen({super.key});
 
-  @override
-  State<LoginScreen> createState() => _LoginState();
-}
-
-class _LoginState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final controllerAuth = Get.put(ControllerAuth());
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
+  final ControllerAuth controllerAuth = Get.put(ControllerAuth());
 
   @override
   Widget build(BuildContext context) {
@@ -126,7 +114,6 @@ class _LoginState extends State<LoginScreen> {
     );
   }
 
-
   Widget _signin(BuildContext context) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
@@ -149,7 +136,6 @@ class _LoginState extends State<LoginScreen> {
       ),
     );
   }
-
 
   Widget _signup(BuildContext context) {
     return Padding(
