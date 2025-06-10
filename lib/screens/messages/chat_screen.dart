@@ -170,7 +170,7 @@ class ChatScreen extends StatelessWidget {
           ],
         ),
       ),
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.redAccent,
     );
   }
 
@@ -184,58 +184,6 @@ class ChatScreen extends StatelessWidget {
         ),
       ),
     ));
-  }
-
-  Widget _buildReactions(MessageModel msg) {
-    if (msg.reactions == null || msg.reactions!.isEmpty) return const SizedBox.shrink();
-
-    final reactionsCount = <String, int>{};
-    for (var reaction in msg.reactions!.values) {
-      reactionsCount[reaction] = (reactionsCount[reaction] ?? 0) + 1;
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: reactionsCount.entries.map((entry) {
-            final emoji = _reactionEmojiMap[entry.key] ?? '👍';
-            final count = entry.value;
-
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 1),
-              child: Row(
-                children: [
-                  Text(emoji, style: const TextStyle(fontSize: 12)),
-                  if (count > 1)
-                    Text(' $count', style: const TextStyle(fontSize: 12, color: Colors.black)),
-                ],
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmojiPicker() {
-    return GetBuilder<MessagesController>(
-      id: 'emoji',
-      builder: (_) {
-        if (!_controller.isEmojiVisible) return const SizedBox.shrink();
-        return EmojiPicker(
-          onEmojiSelected: (category, emoji) {
-            _messageController.text += emoji.emoji;
-          },
-        );
-      },
-    );
   }
 
   @override
@@ -308,16 +256,22 @@ class ChatScreen extends StatelessWidget {
 
                     final msg = messages[index - 1];
                     final isSender = msg.senderUid == currentUser.uid;
+                    final borderRadius = BorderRadius.only(
+                      topLeft: const Radius.circular(16),
+                      topRight: const Radius.circular(16),
+                      bottomLeft: Radius.circular(isSender ? 16 : 0),
+                      bottomRight: Radius.circular(isSender ? 0 : 16),
+                    );
+                    final senderName = isSender ? 'Bạn' : msg.senderName;
 
                     return GestureDetector(
                       onDoubleTap: () => _showMessageOptionsDialog(msg, conversationId),
                       onLongPress: () => _showReactionPicker(msg, conversationId),
                       child: Column(
-                        crossAxisAlignment:
-                        isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                        crossAxisAlignment: isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                         children: [
                           Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
                             child: Text(
                               _controller.formatTimestamp(msg.timestamp),
                               style: const TextStyle(fontSize: 12, color: Colors.white54),
@@ -325,97 +279,48 @@ class ChatScreen extends StatelessWidget {
                           ),
                           Align(
                             alignment: isSender ? Alignment.centerRight : Alignment.centerLeft,
-                            child: Column(
-                              crossAxisAlignment:
-                              isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                              children: [
-                                if (msg.images.isNotEmpty)
-                                  Stack(
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(vertical: 6),
+                              padding: const EdgeInsets.all(12),
+                              constraints: BoxConstraints(
+                                  maxWidth: MediaQuery.of(context).size.width * 0.75),
+                              decoration: BoxDecoration(
+                                color: isSender ? Colors.red.shade300 : Colors.grey.shade400,
+                                borderRadius: borderRadius,
+                              ),
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      msg.images.length == 1
-                                          ? Padding(
-                                        padding: const EdgeInsets.only(bottom: 8.0),
-                                        child: GestureDetector(
-                                          onTap: () => _openImageFullScreen(msg.images, 0),
-                                          child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(12),
-                                            child: Image.network(
-                                              msg.images[0],
-                                              width: MediaQuery.of(context).size.width * 0.6,
-                                              height: MediaQuery.of(context).size.width * 0.6,
-                                              fit: BoxFit.cover,
-                                            ),
-                                          ),
-                                        ),
-                                      )
-                                          : Padding(
-                                        padding: const EdgeInsets.only(bottom: 8.0),
-                                        child: SizedBox(
-                                          width: MediaQuery.of(context).size.width * 0.6,
-                                          child: GridView.builder(
-                                            shrinkWrap: true,
-                                            physics: const NeverScrollableScrollPhysics(),
-                                            itemCount: msg.images.length,
-                                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                              crossAxisCount: 2,
-                                              mainAxisSpacing: 8,
-                                              crossAxisSpacing: 8,
-                                              childAspectRatio: 1,
-                                            ),
-                                            itemBuilder: (context, index) {
-                                              return GestureDetector(
-                                                onTap: () => _openImageFullScreen(msg.images, index),
-                                                child: ClipRRect(
-                                                  borderRadius: BorderRadius.circular(12),
-                                                  child: Image.network(
-                                                    msg.images[index],
-                                                    fit: BoxFit.cover,
-                                                  ),
-                                                ),
-                                              );
-                                            },
-                                          ),
+                                      Text(
+                                        senderName,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.grey.shade900,
+                                          fontSize: 14,
                                         ),
                                       ),
-                                      Positioned(
-                                        bottom: 0,
-                                        right: 0,
-                                        child: _buildReactions(msg),
-                                      ),
+                                      const SizedBox(height: 4),
+                                      if (msg.message.isNotEmpty)
+                                        Text(msg.message,
+                                            style: const TextStyle(fontSize: 16, color: Colors.black87)
+                                        ),
+                                      if (msg.images.isNotEmpty) const SizedBox(height: 8),
+                                      _buildImages(msg),
                                     ],
                                   ),
-                                if (msg.message.isNotEmpty)
-                                  Stack(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                        margin: const EdgeInsets.only(bottom: 16),
-                                        decoration: BoxDecoration(
-                                          color: isSender ? Colors.redAccent : Colors.grey.shade300,
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: ConstrainedBox(
-                                          constraints: BoxConstraints(
-                                            maxWidth: MediaQuery.of(context).size.width * 0.55,
-                                          ),
-                                          child: Text(
-                                            msg.images.isNotEmpty ? 'Ảnh: ${msg.message}' : msg.message,
-                                            style: TextStyle(
-                                              color: isSender ? Colors.white : Colors.black87,
-                                              fontSize: 16,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      Positioned(
-                                        bottom: 0,
-                                        right: 0,
-                                        child: _buildReactions(msg),
-                                      ),
-                                    ],
-                                  ),
-                                const SizedBox(height: 8),
-                              ],
+
+                                  if (msg.reactions != null && msg.reactions!.isNotEmpty)
+                                    Positioned(
+                                      bottom: -25,
+                                      right: 0,
+                                      child: _buildReactions(msg),
+                                    ),
+                                ],
+                              ),
+
                             ),
                           ),
                         ],
@@ -534,6 +439,86 @@ class ChatScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+  Widget _buildReactions(MessageModel msg) {
+    if (msg.reactions == null || msg.reactions!.isEmpty) return const SizedBox.shrink();
+    final counts = <String, int>{};
+    msg.reactions!.values.forEach((key) {
+      counts[key] = (counts[key] ?? 0) + 1;
+    });
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: counts.entries.map((e) {
+            final emoji = _reactionEmojiMap[e.key] ?? '👍';
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Row(
+                children: [
+                  Text(emoji, style: const TextStyle(fontSize: 12)),
+                  if (e.value > 1)
+                    Text(' ${e.value}', style: const TextStyle(fontSize: 12)),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImages(MessageModel msg) {
+    if (msg.images.isEmpty) return const SizedBox.shrink();
+    if (msg.images.length == 1) {
+      return GestureDetector(
+        onTap: () => _openImageFullScreen(msg.images, 0),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.network(msg.images.first,
+              width: 200, height: 200, fit: BoxFit.cover),
+        ),
+      );
+    }
+    return SizedBox(
+      height: 200,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: msg.images.length,
+        itemBuilder: (context, i) {
+          return GestureDetector(
+            onTap: () => _openImageFullScreen(msg.images, i),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(msg.images[i],
+                    width: 150, height: 200, fit: BoxFit.cover),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+  Widget _buildEmojiPicker() {
+    return GetBuilder<MessagesController>(
+      id: 'emoji',
+      builder: (_) {
+        if (!_controller.isEmojiVisible) return const SizedBox.shrink();
+        return EmojiPicker(
+          onEmojiSelected: (category, emoji) {
+            _messageController.text += emoji.emoji;
+          },
+        );
+      },
     );
   }
 }

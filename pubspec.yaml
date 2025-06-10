@@ -41,7 +41,6 @@ dependencies:
   firebase_auth: ^5.5.3
   image_picker: ^1.1.2
   intl: ^0.18.0
-  firebase_messaging: ^15.2.5
   get_storage: ^2.0.3
   photo_manager: ^3.6.4
   pro_image_editor: ^9.7.2

@@ -23,14 +23,6 @@ class HashtagModel {
       count: map['count'] ?? 0,
     );
   }
-
-  factory HashtagModel.fromDocument(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>? ?? {};
-    return HashtagModel(
-      id: doc.id,
-      count: data['count'] ?? 0,
-    );
-  }
 }
 
 class HashtagModelSnapshot {
