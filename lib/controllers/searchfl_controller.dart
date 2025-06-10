@@ -18,7 +18,7 @@ class SearchFlutterController extends GetxController {
       <QueryDocumentSnapshot<Map<String, dynamic>>>[].obs;
   final RxList<String> hashtagSuggestions = <String>[].obs;
   final RxList<PostModel> hashtagPostsResults = <PostModel>[].obs;
-  Timer? _debounce; //deplay
+  Timer? _debounce;
 
   @override
   void onInit() {
@@ -63,6 +63,8 @@ class SearchFlutterController extends GetxController {
   }
 
   Future<void> onHashtagSubmitted(String hashtag) async {
+    FocusManager.instance.primaryFocus?.unfocus();
+
     textEditingController.removeListener(_onSearchChanged);
     textEditingController.text = hashtag;
     searchQuery.value = hashtag;

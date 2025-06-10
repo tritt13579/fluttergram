@@ -16,7 +16,8 @@ class MessagesScreen extends StatelessWidget {
         appBar: AppBar(
           title: Text(controller.currentUsername.isNotEmpty
               ? controller.currentUsername
-              : 'Tài khoản'),
+              : 'Tài khoản'
+          ),
           actions: [
             IconButton(icon: const Icon(Icons.edit_square), onPressed: () {Get.to(() => EditProfileScreen());}),
           ],

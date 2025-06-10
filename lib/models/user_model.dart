@@ -153,17 +153,6 @@ class UserModelSnapshot {
     }
   }
 
-  static Future<void> delete(String uid) async {
-    try {
-      await _firestore.collection('users').doc(uid).delete();
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error deleting user: $e');
-      }
-      rethrow;
-    }
-  }
-
   static Future<ProfileResult> getUserProfileAndPosts(String uid) async {
     // Lấy user
     final userDoc = await _firestore.collection('users').doc(uid).get();

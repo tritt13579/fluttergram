@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
-import '../models/comment_model.dart';
 import '../services/firebase_service.dart';
 
 class PostModel {
@@ -98,7 +97,6 @@ class PostModel {
 class PostModelSnapshot {
   static final FirebaseService _firebaseService = FirebaseService();
   static final Uuid _uuid = const Uuid();
-  static StreamSubscription<QuerySnapshot>? _subscription;
 
   // Get all posts as Map
   static Future<Map<String, PostModel>> getMapPost() async {
@@ -187,45 +185,6 @@ class PostModelSnapshot {
     }
   }
 
-  static Future<PostModel?> getPostById(String postId) async {
-    try {
-      final snapshot = await _firebaseService.firestore
-          .collection('posts')
-          .doc(postId)
-          .get();
-      if (!snapshot.exists) return null;
-      return PostModel.fromFirestore(snapshot);
-    } catch (e) {
-      debugPrint('Error getting post by id: $e');
-      return null;
-    }
-  }
-
-  static Future<List<String>> getLikedUserIds({
-    required String postId,
-    int limit = 20,
-    DocumentSnapshot? lastDocument,
-  }) async {
-    try {
-      Query query = _firebaseService.firestore
-          .collection('posts')
-          .doc(postId)
-          .collection('likes')
-          .orderBy('timestamp', descending: true)
-          .limit(limit);
-
-      if (lastDocument != null) {
-        query = query.startAfterDocument(lastDocument);
-      }
-
-      final snapshot = await query.get();
-      return snapshot.docs.map((doc) => doc.id).toList();
-    } catch (e) {
-      debugPrint('Error getting liked user ids: $e');
-      return [];
-    }
-  }
-
   static Stream<bool> likeStatusStream({
     required String postId,
     required String userId,
@@ -237,36 +196,6 @@ class PostModelSnapshot {
         .doc(userId)
         .snapshots()
         .map((snapshot) => snapshot.exists);
-  }
-
-  // Listen to data changes
-  static void listenDataChange(Map<String, PostModel> maps, {Function()? updateUI}) {
-    _subscription = _firebaseService.firestore
-        .collection('posts')
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .listen((snapshot) {
-      for (var change in snapshot.docChanges) {
-        final post = PostModel.fromFirestore(change.doc);
-
-        switch (change.type) {
-          case DocumentChangeType.added:
-          case DocumentChangeType.modified:
-            maps[post.id] = post;
-            break;
-          case DocumentChangeType.removed:
-            maps.remove(post.id);
-            break;
-        }
-      }
-      updateUI?.call();
-    });
-  }
-
-  // Unsubscribe listener
-  static void unsubscribeListenChange() {
-    _subscription?.cancel();
-    _subscription = null;
   }
 
   // Insert new post
@@ -420,113 +349,6 @@ class PostModelSnapshot {
     } catch (e) {
       debugPrint('Error checking if user liked post: $e');
       return false;
-    }
-  }
-
-  // Add comment
-  static Future<String> addComment({
-    required String postId,
-    required String userId,
-    required String text,
-    String? username,
-    String? userAvatar,
-  }) async {
-    try {
-      final commentRef = _firebaseService.firestore
-          .collection('posts')
-          .doc(postId)
-          .collection('comments')
-          .doc();
-
-      final comment = CommentModel(
-        id: commentRef.id,
-        postId: postId,
-        userId: userId,
-        text: text,
-        createdAt: DateTime.now(),
-        username: username,
-        userAvatar: userAvatar,
-      );
-
-      final batch = _firebaseService.firestore.batch();
-
-      batch.set(commentRef, comment.toMap());
-      batch.update(
-        _firebaseService.firestore.collection('posts').doc(postId),
-        {'commentCount': FieldValue.increment(1)},
-      );
-
-      await batch.commit();
-      return commentRef.id;
-    } catch (e) {
-      debugPrint('Error adding comment: $e');
-      rethrow;
-    }
-  }
-
-  // Get post comments
-  static Future<List<CommentModel>> getPostComments(
-      String postId, {
-        int limit = 20,
-        DocumentSnapshot? lastDocument,
-      }) async {
-    try {
-      Query query = _firebaseService.firestore
-          .collection('posts')
-          .doc(postId)
-          .collection('comments')
-          .orderBy('createdAt', descending: true)
-          .limit(limit);
-
-      if (lastDocument != null) {
-        query = query.startAfterDocument(lastDocument);
-      }
-
-      final snapshot = await query.get();
-
-      return snapshot.docs
-          .map((doc) => CommentModel.fromFirestore(doc))
-          .toList();
-    } catch (e) {
-      debugPrint('Error getting post comments: $e');
-      return [];
-    }
-  }
-
-  // Get popular hashtags
-  static Future<List<Map<String, dynamic>>> getPopularHashtags({int limit = 10}) async {
-    try {
-      final snapshot = await _firebaseService.firestore
-          .collection('hashtags')
-          .orderBy('count', descending: true)
-          .limit(limit)
-          .get();
-
-      return snapshot.docs.map((doc) => {
-        'tag': doc.id,
-        'count': doc['count'],
-      }).toList();
-    } catch (e) {
-      debugPrint('Error getting popular hashtags: $e');
-      return [];
-    }
-  }
-
-  // Search hashtags
-  static Future<List<String>> searchHashtags(String keyword) async {
-    try {
-      final snapshot = await _firebaseService.firestore.collection('hashtags').get();
-      final lowerKeyword = keyword.toLowerCase();
-
-      final results = snapshot.docs
-          .map((doc) => doc.id)
-          .where((tag) => tag.toLowerCase().contains(lowerKeyword))
-          .toList();
-
-      return results;
-    } catch (e) {
-      debugPrint('Error searching hashtags: $e');
-      return [];
     }
   }
 

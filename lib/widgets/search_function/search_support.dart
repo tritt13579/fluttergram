@@ -21,12 +21,15 @@ Widget buildUserResults(SearchFlutterController controller) {
       if (snapshot.hasError) {
         return Center(
             child: Text('Lỗi: ${snapshot.error}',
-                style: const TextStyle(color: Colors.white)));
+                style: const TextStyle(color: Colors.white)
+            )
+        );
       }
       if (!snapshot.hasData || snapshot.data!.isEmpty) {
         return const Center(
           child: Text('Không tìm thấy người dùng',
-              style: TextStyle(color: Colors.white)),
+              style: TextStyle(color: Colors.white)
+          ),
         );
       }
 
@@ -45,7 +48,8 @@ Widget buildUserResults(SearchFlutterController controller) {
               child: const Icon(Icons.person, color: Colors.white),
             ),
             title: Text(user.username,
-                style: const TextStyle(color: Colors.white)),
+                style: const TextStyle(color: Colors.white)
+            ),
             onTap: () {
               String userId = user.uid;
               if (!Get.isRegistered<ProfileController>()) {
@@ -67,7 +71,9 @@ Widget buildHashtagSuggestions(SearchFlutterController controller) {
   if (controller.hashtagSuggestions.isEmpty && controller.searchQuery.value.length > 1) {
     return const Center(
         child: Text('Không tìm thấy hashtag nào',
-            style: TextStyle(color: Colors.white)));
+            style: TextStyle(color: Colors.white)
+        )
+    );
   }
   if (controller.hashtagSuggestions.isEmpty) {
     return buildGridPlaceholder(controller.trendingPosts);
@@ -92,7 +98,8 @@ Widget buildHashtagPosts(SearchFlutterController controller) {
   if (controller.hashtagPostsResults.isEmpty) {
     return const Center(
       child: Text('Không có bài viết với hashtag này',
-          style: TextStyle(color: Colors.white)),
+          style: TextStyle(color: Colors.white)
+      ),
     );
   }
   return ListView.builder(

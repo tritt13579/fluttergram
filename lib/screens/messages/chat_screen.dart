@@ -243,7 +243,6 @@ class ChatScreen extends StatelessWidget {
     final currentUser = FirebaseAuth.instance.currentUser!;
     final String conversationId = getConversationId();
 
-    // init user post count & emoji keyboard hide at build (stateless workaround)
     _controller.countUserPosts(user.uid);
     _controller.hideEmojiKeyboard();
 

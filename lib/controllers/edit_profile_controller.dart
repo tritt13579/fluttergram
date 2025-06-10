@@ -57,7 +57,6 @@ class EditProfileController extends GetxController {
     return await ref.getDownloadURL();
   }
 
-  /// Use GetX instead of BuildContext! No context needed, no async context bug.
   Future<void> saveProfile() async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return;

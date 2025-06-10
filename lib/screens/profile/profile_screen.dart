@@ -107,7 +107,6 @@ class ProfileScreen extends StatelessWidget {
                             );
                             // Reload lại thông tin sau khi chỉnh sửa
                             if (result == true) {
-                              // ignore: use_build_context_synchronously
                               (context as Element).markNeedsBuild();
                             }
                           },
