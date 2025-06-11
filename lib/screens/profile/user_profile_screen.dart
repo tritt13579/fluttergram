@@ -62,7 +62,7 @@ class UserProfileScreen extends StatelessWidget {
                         radius: 40,
                         backgroundImage: user.avatarUrl.isNotEmpty
                             ? NetworkImage(user.avatarUrl)
-                            : const AssetImage('assets/avatar.png') as ImageProvider,
+                            : const AssetImage('assets/images/default_avatar.jpg') as ImageProvider,
                       ),
                       const SizedBox(width: 20),
                       Expanded(

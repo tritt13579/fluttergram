@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/edit_profile_controller.dart';
+import '../../controllers/profile_controller.dart';
+import 'package:fluttergram/utils/snackbar_utils.dart';
 
 class EditProfileScreen extends StatelessWidget {
   EditProfileScreen({super.key});
@@ -33,7 +35,7 @@ class EditProfileScreen extends StatelessWidget {
                         ? FileImage(controller.avatarImage.value!)
                         : (controller.avatarUrl.value.isNotEmpty
                         ? NetworkImage(controller.avatarUrl.value)
-                        : const AssetImage('assets/avatar.png'))
+                        : const AssetImage('assets/images/default_avatar.jpg'))
                     as ImageProvider,
                   ),
                 ),
@@ -65,18 +67,41 @@ class EditProfileScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 32),
-                ElevatedButton(
+                Obx(() => ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red[400],
                     foregroundColor: Colors.black,
                   ),
-                  onPressed: () {
-                    controller.saveProfile();
+                  onPressed: controller.isLoading.value
+                      ? null
+                      : () async {
+                    try {
+                      final success = await controller.saveProfile();
+
+                      if (success) {
+                        // Refresh ProfileController trước khi quay lại
+                        final profileController = Get.find<ProfileController>();
+                        await profileController.refreshProfile();
+
+                        // Quay lại màn hình profile
+                        Get.back(result: true);
+
+                        // Hiển thị snackbar sau khi đã quay lại
+                        await Future.delayed(const Duration(milliseconds: 200));
+                        SnackbarUtils.showSuccess("Cập nhật thông tin thành công!");
+                      }
+                    } catch (e) {
+                      print('Lỗi khi cập nhật profile: $e');
+                    }
                   },
-                  child: const Text(
-                    'Cập nhật',
-                  ),
-                ),
+                  child: controller.isLoading.value
+                      ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                      : const Text('Cập nhật'),
+                )),
               ],
             ),
           ),

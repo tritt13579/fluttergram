@@ -57,9 +57,9 @@ class EditProfileController extends GetxController {
     return await ref.getDownloadURL();
   }
 
-  Future<void> saveProfile() async {
+  Future<bool> saveProfile() async {
     final uid = _auth.currentUser?.uid;
-    if (uid == null) return;
+    if (uid == null) return false;
 
     isLoading.value = true;
     update();
@@ -76,7 +76,7 @@ class EditProfileController extends GetxController {
         isLoading.value = false;
         update();
         SnackbarUtils.showError("Không tìm thấy user!");
-        return;
+        return false;
       }
 
       final updatedUser = UserModel(
@@ -89,17 +89,19 @@ class EditProfileController extends GetxController {
         createdAt: oldUser.createdAt,
         postCount: oldUser.postCount,
       );
+
       await UserModelSnapshot.update(updatedUser);
 
       isLoading.value = false;
       update();
-      SnackbarUtils.showSuccess("Cập nhật thông tin thành công!");
 
-      Get.back(result: true);
+      return true;
+
     } catch (e) {
       isLoading.value = false;
       update();
       SnackbarUtils.showError('Đã xảy ra lỗi: $e');
+      return false;
     }
   }
 }

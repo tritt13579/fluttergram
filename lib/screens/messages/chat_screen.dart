@@ -11,10 +11,15 @@ import '../../models/message_model.dart';
 import '../../models/user_chat_model.dart';
 import '../../utils/snackbar_utils.dart';
 
-class ChatScreen extends StatelessWidget {
+class ChatScreen extends StatefulWidget {
   final UserChatModel user;
-  ChatScreen({super.key, required this.user});
+  const ChatScreen({super.key, required this.user});
 
+  @override
+  State<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final MessagesController _controller = Get.find<MessagesController>();
@@ -29,7 +34,7 @@ class ChatScreen extends StatelessWidget {
 
   String getConversationId() {
     final currentUser = FirebaseAuth.instance.currentUser!;
-    return _controller.getConversationId(currentUser.uid, user.uid);
+    return _controller.getConversationId(currentUser.uid, widget.user.uid);
   }
 
   void _scrollToBottom() {
@@ -42,6 +47,14 @@ class ChatScreen extends StatelessWidget {
         );
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _controller.clearImages();
+    _messageController.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _sendMessage(String conversationId, String currentUserId) async {
@@ -64,7 +77,7 @@ class ChatScreen extends StatelessWidget {
         senderUid: currentUserId,
         senderName: senderName,
         senderAvatar: senderAvatar,
-        receiverUid: user.uid,
+        receiverUid: widget.user.uid,
         message: messageText,
         timestamp: DateTime.now(),
         id: '',
@@ -191,12 +204,12 @@ class ChatScreen extends StatelessWidget {
     final currentUser = FirebaseAuth.instance.currentUser!;
     final String conversationId = getConversationId();
 
-    _controller.countUserPosts(user.uid);
+    _controller.countUserPosts(widget.user.uid);
     _controller.hideEmojiKeyboard();
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(user.fullname),
+        title: Text(widget.user.fullname),
       ),
       body: Column(
         children: [
@@ -222,13 +235,13 @@ class ChatScreen extends StatelessWidget {
                         children: [
                           const SizedBox(height: 16),
                           CircleAvatar(
-                            backgroundImage: NetworkImage(user.avatarUrl),
+                            backgroundImage: NetworkImage(widget.user.avatarUrl),
                             radius: 40,
                           ),
                           const SizedBox(height: 8),
-                          Text(user.fullname,
+                          Text(widget.user.fullname,
                               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                          Text(user.username, style: const TextStyle(color: Colors.grey)),
+                          Text(widget.user.username, style: const TextStyle(color: Colors.grey)),
                           const SizedBox(height: 4),
                           GetBuilder<MessagesController>(
                             id: 'user_post_count',
@@ -245,7 +258,7 @@ class ChatScreen extends StatelessWidget {
                           ),
                           ElevatedButton(
                               onPressed: () {
-                                Get.put(ProfileController()).navigateTo(user.uid);
+                                Get.put(ProfileController()).navigateTo(widget.user.uid);
                               },
                               child: const Text('Xem trang cá nhân')
                           ),
@@ -441,6 +454,7 @@ class ChatScreen extends StatelessWidget {
       ),
     );
   }
+
   Widget _buildReactions(MessageModel msg) {
     if (msg.reactions == null || msg.reactions!.isEmpty) return const SizedBox.shrink();
     final counts = <String, int>{};
@@ -508,6 +522,7 @@ class ChatScreen extends StatelessWidget {
       ),
     );
   }
+
   Widget _buildEmojiPicker() {
     return GetBuilder<MessagesController>(
       id: 'emoji',

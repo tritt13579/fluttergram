@@ -17,8 +17,6 @@ class MessagesController extends GetxController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseService _firebaseService = FirebaseService();
 
-  User? get currentUser => _auth.currentUser;
-  String? get userId => currentUser?.uid;
   String currentUserId = '';
   String currentUsername = '';
   int userPostCount = 0;
@@ -98,26 +96,16 @@ class MessagesController extends GetxController {
     await MessageModelSnapshot.deleteConversation(currentUserId, otherUserId);
   }
 
-  Stream<List<UserChatModel>> getRecentConversations(String currentUserId) {
+  Stream<List<UserChatModel>> getRecentConversationsStream() {
     return UserChatModelSnapshot.getRecentConversations(currentUserId);
   }
 
-  Stream<List<UserChatModel>> getFilteredSuggestionsStream(String currentUserId) {
+  Stream<List<UserChatModel>> getSuggestionsStream() {
     return UserChatModelSnapshot.getFilteredSuggestionsStream(currentUserId);
   }
 
-  Stream<List<UserChatModel>> getRecentConversationsStream() {
-    return getRecentConversations(currentUserId);
-  }
-
-  Stream<List<UserChatModel>> getSuggestionsStream() {
-    return getFilteredSuggestionsStream(currentUserId);
-  }
-
   Future<void> deleteConversationAndMessages(String otherUserId) async {
-    if (userId != null) {
-      await deleteConversation(userId!, otherUserId);
-    }
+    await deleteConversation(currentUserId, otherUserId);
   }
 
   String getConversationId(String uid1, String uid2) {
