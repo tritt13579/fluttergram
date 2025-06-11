@@ -136,4 +136,32 @@ class CommentModelSnapshot {
       rethrow;
     }
   }
+
+  static Future updateUserInfoInComments(String userId, String newUsername, String newAvatarUrl) async {
+    try {
+      final batch = _firebaseService.firestore.batch();
+
+      // Lấy tất cả posts để tìm comments của user
+      final postsSnapshot = await _firebaseService.firestore.collection('posts').get();
+
+      for (var postDoc in postsSnapshot.docs) {
+        final commentsQuery = await postDoc.reference
+            .collection('comments')
+            .where('userId', isEqualTo: userId)
+            .get();
+
+        for (var commentDoc in commentsQuery.docs) {
+          batch.update(commentDoc.reference, {
+            'username': newUsername,
+            'userAvatar': newAvatarUrl,
+          });
+        }
+      }
+
+      await batch.commit();
+    } catch (e) {
+      debugPrint('Error updating user info in comments: $e');
+      rethrow;
+    }
+  }
 }

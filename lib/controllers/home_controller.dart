@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:fluttergram/controllers/story_section_controller.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 
@@ -100,6 +101,17 @@ class HomeController extends GetxController {
       debugPrint('Error loading more posts: $e');
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  Future<void> refreshHomeData() async {
+    await loadPosts();
+
+    try {
+      final storiesController = Get.find<StoriesSectionController>();
+      await storiesController.loadStories();
+    } catch (e) {
+      debugPrint('Stories controller not found or error refreshing stories: $e');
     }
   }
 

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../services/firebase_service.dart';
 
@@ -197,5 +198,35 @@ class MessageModelSnapshot {
     }
 
     await messageRef.update({'reactions': reactions});
+  }
+
+  static Future updateUserInfoInMessages(String userId, String newUsername, String newAvatarUrl) async {
+    try {
+      final batch = _firebaseService.firestore.batch();
+
+      final conversationsQuery = await _firebaseService.firestore
+          .collection('conversations')
+          .where('members', arrayContains: userId)
+          .get();
+
+      for (var convDoc in conversationsQuery.docs) {
+        final messagesQuery = await convDoc.reference
+            .collection('messages')
+            .where('sender_uid', isEqualTo: userId)
+            .get();
+
+        for (var msgDoc in messagesQuery.docs) {
+          batch.update(msgDoc.reference, {
+            'sender_name': newUsername,
+            'sender_avatar': newAvatarUrl,
+          });
+        }
+      }
+
+      await batch.commit();
+    } catch (e) {
+      debugPrint('Error updating user info in messages: $e');
+      rethrow;
+    }
   }
 }

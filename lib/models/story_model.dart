@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:fluttergram/models/user_model.dart';
 
 import '../services/firebase_service.dart';
@@ -139,6 +140,29 @@ class StoryModelSnapshot {
     } else {
       await likeRef.set({'userId': userId, 'timestamp': FieldValue.serverTimestamp()});
       await docRef.update({'likeCount': FieldValue.increment(1)});
+    }
+  }
+
+  static Future updateUserInfoInStories(String userId, String newUsername, String newAvatarUrl) async {
+    try {
+      final batch = _firebaseService.firestore.batch();
+
+      final storiesQuery = await _firebaseService.firestore
+          .collection('stories')
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      for (var doc in storiesQuery.docs) {
+        batch.update(doc.reference, {
+          'username': newUsername,
+          'userAvatar': newAvatarUrl,
+        });
+      }
+
+      await batch.commit();
+    } catch (e) {
+      debugPrint('Error updating user info in stories: $e');
+      rethrow;
     }
   }
 }

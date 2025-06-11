@@ -352,6 +352,29 @@ class PostModelSnapshot {
     }
   }
 
+  static Future updateUserInfoInPosts(String userId, String newUsername, String newAvatarUrl) async {
+    try {
+      final batch = _firebaseService.firestore.batch();
+
+      final postsQuery = await _firebaseService.firestore
+          .collection('posts')
+          .where('ownerId', isEqualTo: userId)
+          .get();
+
+      for (var doc in postsQuery.docs) {
+        batch.update(doc.reference, {
+          'ownerUsername': newUsername,
+          'ownerPhotoUrl': newAvatarUrl,
+        });
+      }
+
+      await batch.commit();
+    } catch (e) {
+      debugPrint('Error updating user info in posts: $e');
+      rethrow;
+    }
+  }
+
   // Private helper methods
   static Future<String> _uploadMedia(Uint8List media, String userId) async {
     final String fileName = '${_uuid.v4()}.jpg';

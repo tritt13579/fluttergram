@@ -6,6 +6,10 @@ import 'package:get/get.dart';
 import 'package:fluttergram/utils/snackbar_utils.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../models/comment_model.dart';
+import '../models/message_model.dart';
+import '../models/post_model.dart';
+import '../models/story_model.dart';
 import '../models/user_model.dart';
 
 class EditProfileController extends GetxController {
@@ -92,6 +96,8 @@ class EditProfileController extends GetxController {
 
       await UserModelSnapshot.update(updatedUser);
 
+      await _updateRelatedCollections(uid, updatedUser);
+
       isLoading.value = false;
       update();
 
@@ -102,6 +108,26 @@ class EditProfileController extends GetxController {
       update();
       SnackbarUtils.showError('Đã xảy ra lỗi: $e');
       return false;
+    }
+  }
+
+  Future _updateRelatedCollections(String uid, UserModel updatedUser) async {
+    try {
+      // Cập nhật posts
+      await PostModelSnapshot.updateUserInfoInPosts(uid, updatedUser.username, updatedUser.avatarUrl);
+
+      // Cập nhật comments
+      await CommentModelSnapshot.updateUserInfoInComments(uid, updatedUser.username, updatedUser.avatarUrl);
+
+      // Cập nhật messages
+      await MessageModelSnapshot.updateUserInfoInMessages(uid, updatedUser.username, updatedUser.avatarUrl);
+
+      // Cập nhật stories
+      await StoryModelSnapshot.updateUserInfoInStories(uid, updatedUser.username, updatedUser.avatarUrl);
+
+    } catch (e) {
+      debugPrint('Error updating related collections: $e');
+      rethrow;
     }
   }
 }

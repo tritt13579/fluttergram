@@ -14,7 +14,7 @@ class HomeScreen extends StatelessWidget {
 
     return Scaffold(
       body: RefreshIndicator(
-        onRefresh: controller.loadPosts,
+        onRefresh: controller.refreshHomeData,
         child: Obx(() {
           if (controller.posts.isEmpty && !controller.isLoading.value) {
             return _buildEmptyView(controller);
