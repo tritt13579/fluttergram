@@ -34,6 +34,7 @@ class EditPostScreen extends StatelessWidget {
               children: [
                 ListView(
                   children: [
+                    // hiển thị ảnh
                     if (post.mediaUrls.isNotEmpty)
                       Container(
                         height: 300,
@@ -98,6 +99,7 @@ class EditPostScreen extends StatelessWidget {
 
                     const Divider(color: Colors.grey),
 
+                    //hashtag và người tag
                     Obx(() {
                       List<Widget> chips = [];
 
@@ -181,6 +183,7 @@ class EditPostScreen extends StatelessWidget {
                   ],
                 ),
 
+                // Gợi ý
                 Obx(() {
                   if (controller.showHashtagSuggestions.isTrue || controller.showUserSuggestions.isTrue) {
                     final suggestions = controller.showHashtagSuggestions.isTrue

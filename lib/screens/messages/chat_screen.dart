@@ -183,7 +183,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
       ),
-      backgroundColor: Colors.redAccent,
+      backgroundColor: Colors.grey.shade900,
     );
   }
 

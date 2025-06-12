@@ -101,8 +101,8 @@ class MessagesScreen extends StatelessWidget {
         }
 
         final filteredSuggestions = controller.searchKeyword.isEmpty
-            ? data
-            : data.where((user) => user.username.toLowerCase().contains(controller.searchKeyword)).toList();
+            ? data.take(10).toList()
+            : data.where((user) => user.username.toLowerCase().contains(controller.searchKeyword)).take(10).toList();
 
         if (filteredSuggestions.isEmpty) {
           return const SizedBox.shrink();

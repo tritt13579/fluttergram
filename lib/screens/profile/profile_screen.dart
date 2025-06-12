@@ -104,8 +104,6 @@ class ProfileScreen extends StatelessWidget {
                         onPressed: () async {
                           final updated = await Get.to(() => EditProfileScreen());
                           if (updated == true) {
-                            // Refresh lại dữ liệu (đã được refresh trong EditProfileScreen)
-                            // Chỉ cần đảm bảo UI được cập nhật
                             profileController.update();
                           }
                         },

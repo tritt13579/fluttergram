@@ -123,8 +123,6 @@ Widget buildGridPlaceholder(List<PostModel> posts) {
   return Padding(
     padding: const EdgeInsets.all(4.0),
     child: GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
       itemCount: posts.length > 20 ? 20 : posts.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
